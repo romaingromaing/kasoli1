@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, Camera } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { CONTRACTS, RECEIPT_ABI } from '@/lib/contracts';
+import { decodeEventLog } from 'viem';
 import toast from 'react-hot-toast';
 import { QRGenerator } from '@/components/qr-generator';
 
@@ -24,11 +25,13 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
   });
   const [step, setStep] = useState<'form' | 'minting' | 'success'>('form');
   const [tokenId, setTokenId] = useState<string>('');
+  const [batchData, setBatchData] = useState<{ metaCid: string; photoCid: string } | null>(null);
 
   const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({
+  const { data: receipt, isLoading: isConfirming } = useWaitForTransactionReceipt({
     hash,
   });
+  const { address } = useAccount();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +68,8 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
       const metaJson = await metaRes.json();
       const metaCID = metaJson.cid as string;
 
+      setBatchData({ metaCid: metaCID, photoCid: photoCID });
+
       writeContract({
         address: CONTRACTS.RECEIPT as `0x${string}`,
         abi: RECEIPT_ABI,
@@ -77,13 +82,6 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
           photoCID,
         ],
       });
-
-      // Mock success for demo
-      setTimeout(() => {
-        setTokenId('12345');
-        setStep('success');
-        toast.success('Batch created successfully!');
-      }, 2000);
 
     } catch (error) {
       console.error('Error creating batch:', error);
@@ -105,6 +103,47 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
       setFormData(prev => ({ ...prev, photo: file }));
     }
   };
+
+  useEffect(() => {
+    async function storeBatch() {
+      if (!receipt || !batchData || !address) return;
+
+      try {
+        const log = receipt.logs.find(
+          (l) => l.address.toLowerCase() === CONTRACTS.RECEIPT.toLowerCase()
+        );
+        let id = '0';
+        if (log) {
+          const decoded = decodeEventLog({ abi: RECEIPT_ABI, data: log.data, topics: log.topics });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          id = (decoded.args as any).id.toString();
+        }
+        setTokenId(id);
+
+        await fetch('/api/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            receiptTokenId: id,
+            metaCid: batchData.metaCid,
+            photoCid: batchData.photoCid,
+            grade: formData.grade,
+            weightKg: parseFloat(formData.weight),
+            farmerAddress: address,
+          }),
+        });
+
+        toast.success('Batch created successfully!');
+        setStep('success');
+      } catch (err) {
+        console.error('Error storing batch:', err);
+        toast.error('Failed to store batch');
+        setStep('form');
+      }
+    }
+
+    storeBatch();
+  }, [receipt]);
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Create New Batch">
