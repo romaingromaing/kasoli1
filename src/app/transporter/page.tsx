@@ -5,42 +5,40 @@ import { QrCode, Truck, MapPin, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BottomNav } from '@/components/ui/bottom-nav';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
 import { QRScanModal } from '@/components/transporter/qr-scan-modal';
 
 export default function TransporterDashboard() {
+  const { address } = useAccount();
   const [showScanModal, setShowScanModal] = useState(false);
+  const [activeDeliveries, setActiveDeliveries] = useState<any[]>([]);
+  const [stats, setStats] = useState<{
+    label: string;
+    value: string;
+    icon: any;
+    color: string;
+  }[]>([]);
 
-  const activeDeliveries = [
-    {
-      id: '1',
-      batchId: 'B001',
-      farmer: 'John Mukasa',
-      buyer: 'Grain Corp Ltd',
-      pickup: 'Kampala Warehouse',
-      delivery: 'Entebbe Processing',
-      distance: '25 km',
-      status: 'Ready for Pickup',
-      freight: '$45',
-    },
-    {
-      id: '2',
-      batchId: 'B002',
-      farmer: 'Sarah Nakato',
-      buyer: 'Export Foods',
-      pickup: 'Jinja Silo',
-      delivery: 'Port Bell',
-      distance: '35 km',
-      status: 'In Transit',
-      freight: '$62',
-    },
-  ];
-
-  const stats = [
-    { label: 'Active Deliveries', value: '2', icon: Truck, color: 'text-teal-deep' },
-    { label: 'This Month', value: '$1,240', icon: Clock, color: 'text-aqua-mint' },
-    { label: 'Completed', value: '18', icon: MapPin, color: 'text-lime-600' },
-  ];
+  useEffect(() => {
+    async function load() {
+      if (!address) return;
+      try {
+        const res = await fetch(`/api/deal?transporter=${address}`);
+        if (!res.ok) return;
+        const deals = await res.json();
+        setActiveDeliveries(deals);
+        setStats([
+          { label: 'Active Deliveries', value: String(deals.length), icon: Truck, color: 'text-teal-deep' },
+          { label: 'This Month', value: '$0', icon: Clock, color: 'text-aqua-mint' },
+          { label: 'Completed', value: '0', icon: MapPin, color: 'text-lime-600' },
+        ]);
+      } catch (err) {
+        console.error('Failed loading deliveries', err);
+      }
+    }
+    load();
+  }, [address]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-warm-white to-lime-lush/5 pb-20">
@@ -97,15 +95,15 @@ export default function TransporterDashboard() {
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="font-semibold text-ocean-navy">
-                        Batch #{delivery.batchId}
+                        Batch #{delivery.batch?.receiptTokenId}
                       </div>
                       <div className="text-sm text-dusk-gray">
-                        {delivery.farmer} → {delivery.buyer}
+                        {delivery.batch?.farmer?.name} → {delivery.buyer?.organisation}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-ocean-navy">{delivery.freight}</div>
-                      <div className="text-sm text-dusk-gray">{delivery.distance}</div>
+                      <div className="font-semibold text-ocean-navy">{delivery.freightAmount ?? ''}</div>
+                      <div className="text-sm text-dusk-gray">-</div>
                     </div>
                   </div>
 
@@ -113,25 +111,25 @@ export default function TransporterDashboard() {
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin size={14} className="text-teal-deep" />
                       <span className="text-dusk-gray">Pickup:</span>
-                      <span className="text-ocean-navy">{delivery.pickup}</span>
+                      <span className="text-ocean-navy">{delivery.batch?.origin}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin size={14} className="text-aqua-mint" />
                       <span className="text-dusk-gray">Delivery:</span>
-                      <span className="text-ocean-navy">{delivery.delivery}</span>
+                      <span className="text-ocean-navy">{delivery.batch?.destination}</span>
                     </div>
                   </div>
 
                   <div className="flex justify-between items-center">
                     <span className={`text-sm px-3 py-1 rounded-full ${
-                      delivery.status === 'Ready for Pickup' 
+                      delivery.status === 'PENDING_SIGS'
                         ? 'bg-lime-lush/20 text-lime-700'
                         : 'bg-aqua-mint/20 text-aqua-mint'
                     }`}>
                       {delivery.status}
                     </span>
                     <Button size="sm" variant="outline">
-                      {delivery.status === 'Ready for Pickup' ? 'Sign Pickup' : 'Track'}
+                      {delivery.status === 'PENDING_SIGS' ? 'Sign Pickup' : 'Track'}
                     </Button>
                   </div>
                 </motion.div>
