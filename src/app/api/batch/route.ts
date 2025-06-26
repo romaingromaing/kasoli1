@@ -8,8 +8,11 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
 
     if (farmerAddr) {
+      // Convert address to lowercase for consistency
+      const walletAddress = farmerAddr.toLowerCase();
+      
       const farmer = await prisma.farmer.findUnique({
-        where: { walletAddress: farmerAddr }
+        where: { walletAddress }
       });
 
       if (!farmer) {
@@ -44,17 +47,20 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    
+    // Convert address to lowercase for consistency
+    const walletAddress = (body.farmerAddress as string).toLowerCase();
 
     // Find or create farmer
     let farmer = await prisma.farmer.findUnique({
-      where: { walletAddress: body.farmerAddress },
+      where: { walletAddress },
     });
 
     if (!farmer) {
       // Create new farmer if not found
       farmer = await prisma.farmer.create({
         data: {
-          walletAddress: body.farmerAddress,
+          walletAddress,
         },
       });
     }
