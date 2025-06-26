@@ -90,6 +90,8 @@ model Batch {
   metaCid        String
   photoCid       String
   origin         String?
+  locationLat    Float?
+  locationLng    Float?
   destination    String?
   grade          String?
   weightKg       Float

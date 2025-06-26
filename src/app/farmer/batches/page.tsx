@@ -52,6 +52,11 @@ export default function FarmerBatchesPage() {
                       <MapPin size={14} />
                       {batch.origin}
                     </div>
+                    {batch.locationLat && (
+                      <div className="text-xs text-dusk-gray mt-1">
+                        {batch.locationLat.toFixed(5)}, {batch.locationLng.toFixed(5)}
+                      </div>
+                    )}
                   </div>
                   <div className="text-right">
                     <div

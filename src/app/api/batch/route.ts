@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
         metaCid: body.metaCid,
         photoCid: body.photoCid,
         origin: body.origin,
+        locationLat: body.locationLat,
+        locationLng: body.locationLng,
         grade: body.grade,
         weightKg: body.weightKg,
         farmerId: farmer.id,

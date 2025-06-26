@@ -114,6 +114,9 @@ export default function TransporterDashboard() {
                       <MapPin size={14} className="text-teal-deep" />
                       <span className="text-dusk-gray">Pickup:</span>
                       <span className="text-ocean-navy">{delivery.batch?.origin}</span>
+                      {delivery.batch?.locationLat && (
+                        <span className="text-xs text-dusk-gray"> ({delivery.batch.locationLat.toFixed(5)}, {delivery.batch.locationLng.toFixed(5)})</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin size={14} className="text-aqua-mint" />

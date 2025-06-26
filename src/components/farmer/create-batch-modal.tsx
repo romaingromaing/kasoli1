@@ -22,6 +22,8 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
     weight: '',
     grade: '1',
     origin: '',
+    latitude: '',
+    longitude: '',
     photo: null as File | null,
   });
   const [step, setStep] = useState<'form' | 'minting' | 'success'>('form');
@@ -37,7 +39,13 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.weight || !formData.photo || !formData.origin) {
+    if (
+      !formData.weight ||
+      !formData.photo ||
+      !formData.origin ||
+      !formData.latitude ||
+      !formData.longitude
+    ) {
       toast.error('Please fill all fields and upload a photo');
       return;
     }
@@ -59,6 +67,11 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
       const meta = {
         weightKg: parseFloat(formData.weight),
         grade: parseInt(formData.grade),
+        origin: formData.origin,
+        location: {
+          lat: parseFloat(formData.latitude),
+          lng: parseFloat(formData.longitude),
+        },
         image: `ipfs://${photoCID}`,
       };
       const metaRes = await fetch('/api/ipfs/json', {
@@ -97,7 +110,7 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
 
   const handleClose = () => {
     setStep('form');
-    setFormData({ weight: '', grade: '1', origin: '', photo: null });
+    setFormData({ weight: '', grade: '1', origin: '', latitude: '', longitude: '', photo: null });
     setTokenId('');
     onClose();
   };
@@ -135,6 +148,8 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
             grade: formData.grade,
             weightKg: parseFloat(formData.weight),
             origin: formData.origin,
+            locationLat: parseFloat(formData.latitude),
+            locationLng: parseFloat(formData.longitude),
             farmerAddress: address,
           }),
         });
@@ -173,6 +188,43 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
             placeholder="e.g. Kampala Warehouse"
             required
           />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Latitude"
+              type="number"
+              step="0.000001"
+              value={formData.latitude}
+              onChange={(e) => setFormData(prev => ({ ...prev, latitude: e.target.value }))}
+              placeholder="0.000000"
+              required
+            />
+            <Input
+              label="Longitude"
+              type="number"
+              step="0.000001"
+              value={formData.longitude}
+              onChange={(e) => setFormData(prev => ({ ...prev, longitude: e.target.value }))}
+              placeholder="0.000000"
+              required
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              navigator.geolocation.getCurrentPosition((pos) => {
+                const { latitude, longitude } = pos.coords;
+                setFormData((prev) => ({
+                  ...prev,
+                  latitude: latitude.toString(),
+                  longitude: longitude.toString(),
+                }));
+              });
+            }}
+          >
+            Use Current Location
+          </Button>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-ocean-navy">

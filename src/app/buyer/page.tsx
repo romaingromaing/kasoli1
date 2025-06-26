@@ -87,6 +87,11 @@ export default function BuyerDashboard() {
                             <MapPin size={14} />
                             {batch.origin}
                           </div>
+                          {batch.locationLat && (
+                            <div className="text-xs text-dusk-gray">
+                              {batch.locationLat.toFixed(5)}, {batch.locationLng.toFixed(5)}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <Star size={14} className="text-yellow-500 fill-current" />
