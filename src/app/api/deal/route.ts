@@ -5,6 +5,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const transporterAddr = searchParams.get('transporter');
+    const buyerAddr = searchParams.get('buyer');
 
     if (transporterAddr) {
       const transporter = await prisma.transporter.findUnique({
@@ -18,6 +19,25 @@ export async function GET(req: NextRequest) {
       }
       const deals = await prisma.deal.findMany({
         where: { transporterId: transporter.id },
+        include: {
+          batch: true,
+          buyer: true,
+          transporter: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      return NextResponse.json(deals);
+    }
+
+    if (buyerAddr) {
+      const buyer = await prisma.buyer.findUnique({
+        where: { walletAddress: buyerAddr },
+      });
+      if (!buyer) {
+        return NextResponse.json({ error: 'Buyer not found' }, { status: 400 });
+      }
+      const deals = await prisma.deal.findMany({
+        where: { buyerId: buyer.id },
         include: {
           batch: true,
           buyer: true,
