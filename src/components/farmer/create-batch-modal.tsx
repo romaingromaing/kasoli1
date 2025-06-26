@@ -41,9 +41,29 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
     setStep('minting');
 
     try {
-      // In a real app, you'd upload to IPFS here
-      const mockMetaCID = 'QmMockMetadata123';
-      const mockPhotoCID = 'QmMockPhoto456';
+      // Upload photo to IPFS via Next.js route
+      const photoData = new FormData();
+      photoData.set('file', formData.photo);
+      const photoRes = await fetch('/api/ipfs/file', {
+        method: 'POST',
+        body: photoData,
+      });
+      const photoJson = await photoRes.json();
+      const photoCID = photoJson.cid as string;
+
+      // Upload metadata JSON referencing the photo
+      const meta = {
+        weightKg: parseFloat(formData.weight),
+        grade: parseInt(formData.grade),
+        image: `ipfs://${photoCID}`,
+      };
+      const metaRes = await fetch('/api/ipfs/json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(meta),
+      });
+      const metaJson = await metaRes.json();
+      const metaCID = metaJson.cid as string;
 
       writeContract({
         address: CONTRACTS.RECEIPT as `0x${string}`,
@@ -53,8 +73,8 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
           '0x1234567890123456789012345678901234567890' as `0x${string}`, // farmer address
           BigInt(Math.floor(parseFloat(formData.weight) * 1000)), // weight in grams
           parseInt(formData.grade) as 1 | 2 | 3 | 4 | 5,
-          mockMetaCID,
-          mockPhotoCID,
+          metaCID,
+          photoCID,
         ],
       });
 
