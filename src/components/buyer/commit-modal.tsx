@@ -23,6 +23,8 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [freightCost, setFreightCost] = useState<bigint>(0n);
   const [step, setStep] = useState<'calculate' | 'confirm' | 'processing'>('calculate');
+  const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+  const [distanceMethod, setDistanceMethod] = useState<string>('');
 
   const { data: freightQuote } = useReadContract({
     address: CONTRACTS.ORACLE as `0x${string}`,
@@ -30,10 +32,10 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
     functionName: 'quote',
     args: [
       BigInt(batch?.weight ? parseFloat(batch.weight.replace(' kg', '')) * 1000 : 0), // kg to grams
-      BigInt(parseFloat(distance) * 1000), // km to meters
+      BigInt(distance && !isNaN(parseFloat(distance)) ? parseFloat(distance) * 1000 : 0), // km to meters
     ],
     query: {
-      enabled: !!batch && !!distance,
+      enabled: !!batch && !!distance && !isNaN(parseFloat(distance)),
     },
   });
 
@@ -56,14 +58,34 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
 
   useEffect(() => {
     if (!coords || !batch) return;
+    
+    setIsCalculatingDistance(true);
+    setDistance('');
+    
     fetch(`/api/distance?batchId=${batch.id}&lat=${coords.lat}&lng=${coords.lng}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.distance !== undefined) {
           setDistance(data.distance.toFixed(2));
+          setDistanceMethod(data.method || 'calculated');
+          
+          // Show user-friendly message based on calculation method
+          if (data.method === 'google_maps') {
+            toast.success(`Distance calculated: ${data.distanceText} (via roads)`);
+          } else if (data.method === 'haversine_fallback') {
+            toast.success(`Distance calculated: ${data.distanceText} (straight-line)`);
+          }
+        } else {
+          toast.error('Failed to calculate distance');
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error('Distance calculation failed:', error);
+        toast.error('Failed to calculate distance');
+      })
+      .finally(() => {
+        setIsCalculatingDistance(false);
+      });
   }, [coords, batch]);
 
   useEffect(() => {
@@ -92,11 +114,43 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   };
 
   const useCurrentLocation = () => {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const { latitude, longitude } = pos.coords;
-      setLocationInput('Current Location');
-      setCoords({ lat: latitude, lng: longitude });
-    });
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by this browser');
+      return;
+    }
+
+    toast.loading('Getting your location...', { id: 'location' });
+    
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setLocationInput('Current Location');
+        setCoords({ lat: latitude, lng: longitude });
+        toast.dismiss('location');
+        toast.success('Location found! Calculating distance...');
+      },
+      (error) => {
+        toast.dismiss('location');
+        let message = 'Failed to get location';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message = 'Location access denied. Please enable location permissions.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message = 'Location information unavailable';
+            break;
+          case error.TIMEOUT:
+            message = 'Location request timed out';
+            break;
+        }
+        toast.error(message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutes
+      }
+    );
   };
 
   const handleCommit = async () => {
@@ -106,7 +160,8 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
 
     try {
       // Mock values for demo
-      const farmerAmount = BigInt(Math.floor(parseFloat(batch.price.replace('$', '')) * 1e18));
+      const totalPrice = calculateTotalPrice(batch);
+      const farmerAmount = BigInt(Math.floor(totalPrice * 1e18));
       const platformFee = farmerAmount * 3n / 100n; // 3%
       const total = farmerAmount + freightCost + platformFee;
 
@@ -157,6 +212,15 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
     return `$${usd.toFixed(2)}`;
   };
 
+  const calculateTotalPrice = (batch: any): number => {
+    if (!batch || !batch.weightKg || !batch.pricePerKg) return 0;
+    return batch.weightKg * parseFloat(batch.pricePerKg);
+  };
+
+  const formatPrice = (amount: number): string => {
+    return `$${amount.toFixed(2)}`;
+  };
+
   if (!batch) return null;
 
   return (
@@ -179,45 +243,83 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
                 <span className="text-ocean-navy">{batch.weightKg} kg</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-dusk-gray">Price:</span>
-                <span className="text-ocean-navy font-semibold">{batch.price ?? '-'}</span>
+                <span className="text-dusk-gray">Price per Kg:</span>
+                <span className="text-ocean-navy">{batch.pricePerKg ? `$${parseFloat(batch.pricePerKg).toFixed(2)}` : 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-dusk-gray">Total Price:</span>
+                <span className="text-ocean-navy font-semibold">{formatPrice(calculateTotalPrice(batch))}</span>
               </div>
             </div>
           </div>
 
-          <Input
-            label="Delivery Location"
-            type="text"
-            value={locationInput}
-            onChange={(e) => setLocationInput(e.target.value)}
-            placeholder="Search location"
-            icon={<MapPin size={20} />}
-          />
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-ocean-navy">
+              <MapPin size={16} className="inline mr-2" />
+              Delivery Location
+            </label>
+            <input
+              type="text"
+              value={locationInput}
+              onChange={(e) => setLocationInput(e.target.value)}
+              placeholder="Search location"
+              className="w-full px-4 py-3 rounded-xl border border-dusk-gray/30 bg-warm-white text-ocean-navy placeholder-dusk-gray focus:outline-none focus:ring-2 focus:ring-lime-lush focus:border-transparent transition-all duration-200"
+            />
+          </div>
           {suggestions.length > 0 && (
-            <ul className="border border-dusk-gray/30 rounded-xl bg-white max-h-40 overflow-y-auto">
-              {suggestions.map((s) => (
-                <li
-                  key={s.place_id}
-                  className="px-4 py-2 cursor-pointer hover:bg-lime-lush/20"
-                  onClick={() => selectSuggestion(s.place_id, s.description)}
-                >
-                  {s.description}
-                </li>
-              ))}
-            </ul>
+            <div className="relative">
+              <ul className="absolute top-0 left-0 right-0 z-50 border border-dusk-gray/30 rounded-xl bg-warm-white shadow-lg max-h-48 overflow-y-auto">
+                {suggestions.map((s) => (
+                  <li
+                    key={s.place_id}
+                    className="px-4 py-3 cursor-pointer hover:bg-lime-lush/20 text-ocean-navy text-sm border-b border-dusk-gray/10 last:border-b-0 transition-colors duration-150"
+                    onClick={() => selectSuggestion(s.place_id, s.description)}
+                  >
+                    <div className="flex items-center">
+                      <MapPin size={14} className="text-dusk-gray mr-2 flex-shrink-0" />
+                      <span className="truncate">{s.description}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <Button type="button" variant="outline" onClick={useCurrentLocation} className="w-full">
             Use Current Location
           </Button>
 
-          <Input
-            label="Delivery Distance (km)"
-            type="number"
-            value={distance}
-            onChange={(e) => setDistance(e.target.value)}
-            placeholder="Enter distance in km"
-            icon={<Truck size={20} />}
-          />
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-ocean-navy">
+              <Truck size={16} className="inline mr-2" />
+              Delivery Distance (km)
+              {distanceMethod === 'google_maps' && (
+                <span className="text-xs text-teal-deep ml-1">(Road distance)</span>
+              )}
+              {distanceMethod === 'haversine_fallback' && (
+                <span className="text-xs text-dusk-gray ml-1">(Straight-line distance)</span>
+              )}
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                value={distance}
+                onChange={(e) => setDistance(e.target.value)}
+                placeholder={isCalculatingDistance ? "Calculating..." : "Auto-calculated when location is selected"}
+                className="w-full px-4 py-3 rounded-xl border border-dusk-gray/30 bg-warm-white text-ocean-navy placeholder-dusk-gray focus:outline-none focus:ring-2 focus:ring-lime-lush focus:border-transparent transition-all duration-200"
+                disabled={isCalculatingDistance}
+              />
+              {isCalculatingDistance && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="w-5 h-5 border-2 border-lime-lush border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+            </div>
+            {distance && !isCalculatingDistance && (
+              <p className="text-xs text-teal-deep">
+                ✓ Distance auto-calculated from your location to the batch origin
+              </p>
+            )}
+          </div>
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose} className="flex-1">
@@ -238,7 +340,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-dusk-gray">Farmer Payment:</span>
-                <span className="text-ocean-navy">{batch.price}</span>
+                <span className="text-ocean-navy">{formatPrice(calculateTotalPrice(batch))}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-dusk-gray">Freight Cost:</span>
@@ -247,18 +349,18 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
               <div className="flex justify-between">
                 <span className="text-dusk-gray">Platform Fee (3%):</span>
                 <span className="text-ocean-navy">
-                  ${(parseFloat(batch.price.replace('$', '')) * 0.03).toFixed(2)}
+                  {formatPrice(calculateTotalPrice(batch) * 0.03)}
                 </span>
               </div>
               <hr className="border-dusk-gray/20" />
               <div className="flex justify-between font-semibold">
                 <span className="text-ocean-navy">Total:</span>
                 <span className="text-ocean-navy">
-                  ${(
-                    parseFloat(batch.price.replace('$', '')) +
+                  {formatPrice(
+                    calculateTotalPrice(batch) +
                     Number(freightCost) / 3700 +
-                    parseFloat(batch.price.replace('$', '')) * 0.03
-                  ).toFixed(2)}
+                    calculateTotalPrice(batch) * 0.03
+                  )}
                 </span>
               </div>
             </div>

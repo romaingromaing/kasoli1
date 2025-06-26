@@ -75,13 +75,14 @@ export async function POST(req: NextRequest) {
         locationLng: body.locationLng,
         grade: body.grade,
         weightKg: body.weightKg,
+        pricePerKg: body.pricePerKg,
         farmerId: farmer.id,
       },
     });
 
     return NextResponse.json(batch);
   } catch (error) {
-    console.error('Batch creation failed', error);
+    console.error('Batch creation failed:', error);
     return NextResponse.json({ error: 'Batch creation failed' }, { status: 500 });
   }
 }

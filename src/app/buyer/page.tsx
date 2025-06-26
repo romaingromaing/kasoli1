@@ -106,8 +106,18 @@ export default function BuyerDashboard() {
                           </span>
                           <span className="text-dusk-gray">{batch.weightKg} kg</span>
                         </div>
-                        <div className="text-lg font-bold text-ocean-navy">
-                          {batch.price ?? '-'}
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-ocean-navy">
+                            {batch.pricePerKg && batch.weightKg 
+                              ? `$${(parseFloat(batch.pricePerKg) * batch.weightKg).toFixed(2)}`
+                              : 'Price TBD'
+                            }
+                          </div>
+                          {batch.pricePerKg && (
+                            <div className="text-xs text-dusk-gray">
+                              ${parseFloat(batch.pricePerKg).toFixed(2)}/kg
+                            </div>
+                          )}
                         </div>
                       </div>
                       

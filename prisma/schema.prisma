@@ -95,6 +95,7 @@ model Batch {
   destination    String?
   grade          String?
   weightKg       Float
+  pricePerKg     Decimal? @db.Decimal(10, 2) // Price per kilogram in USD
   status         BatchStatus @default(LISTED)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -122,6 +123,10 @@ model Deal {
   sigMask         Int
   platformAck     Boolean     @default(false)
   status          DealStatus  @default(PENDING_SIGS)
+  
+  // Timeout for signatures (in hours, default 24 hours)
+  signatureTimeoutHours Int     @default(24)
+  timeoutAt       DateTime?   // When the deal will timeout if not all signatures received
 
   escrowTxHash    String?
   payoutTxHash    String?

@@ -69,6 +69,7 @@ async function main() {
       destination: 'Entebbe Processing',
       grade: 'Grade A',
       weightKg: 2500,
+      pricePerKg: 1.25, // $1.25 per kg
       farmerId: farmer1.id,
       transporterId: transporter1.id,
     },
@@ -83,6 +84,7 @@ async function main() {
       destination: 'Port Bell',
       grade: 'Grade B',
       weightKg: 1800,
+      pricePerKg: 1.10, // $1.10 per kg
       farmerId: farmer2.id,
     },
   });
