@@ -1,0 +1,152 @@
+// Prisma schema • Kasoli‑ku‑Mukutu • created 26 Jun 2025
+// ⚠️  Adjust `provider` and `DATABASE_URL` as needed (PostgreSQL assumed)
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                     ENUMS                                  */
+/* -------------------------------------------------------------------------- */
+
+enum Role {
+  FARMER
+  BUYER
+  TRANSPORTER
+  PLATFORM
+}
+
+enum BatchStatus {
+  LISTED          // created & stored in silo
+  LOCKED          // buyer locked escrow
+  IN_TRANSIT      // transporter signed pick‑up
+  DELIVERED       // buyer signed delivery
+  FINALISED       // platform released funds
+  DISPUTED
+}
+
+enum DealStatus {
+  PENDING_SIGS    // waiting for all 3 operational sigs
+  READY_TO_FINAL  // all sigs present, platform pending
+  PAID_OUT
+  DISPUTED
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   MODELS                                   */
+/* -------------------------------------------------------------------------- */
+
+model Farmer {
+  id             String   @id @default(uuid())
+  walletAddress  String   @unique
+  name           String?
+  phone          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  batches        Batch[]
+}
+
+model Buyer {
+  id             String   @id @default(uuid())
+  walletAddress  String   @unique
+  organisation   String?
+  contactName    String?
+  phone          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deals          Deal[]   @relation("BuyerDeals")
+}
+
+model Transporter {
+  id             String   @id @default(uuid())
+  walletAddress  String   @unique
+  name           String?
+  vehicleReg     String?
+  phone          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  batches        Batch[]
+  deals          Deal[]   @relation("TransporterDeals")
+}
+
+model Platform {
+  id             Int      @id @default(1)   // singleton row
+  walletAddress  String   @unique
+  name           String?
+  url            String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deals          Deal[]
+}
+
+model Batch {
+  id             String   @id @default(uuid())
+  receiptTokenId String   // ERC‑1155 token id as string for BigInt safety
+  metaCid        String
+  photoCid       String
+  origin         String?
+  destination    String?
+  grade          String?
+  weightKg       Float
+  status         BatchStatus @default(LISTED)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  farmerId       String
+  farmer         Farmer   @relation(fields: [farmerId], references: [id])
+
+  transporterId  String?  // set when transporter accepts haul
+  transporter    Transporter? @relation(fields: [transporterId], references: [id])
+
+  deal           Deal?
+}
+
+model Deal {
+  id              String      @id @default(uuid())
+  batchId         String      @unique
+  batch           Batch       @relation(fields: [batchId], references: [id])
+
+  farmerAmount    Decimal @db.Decimal(38, 18)
+  freightAmount   Decimal @db.Decimal(38, 18)
+  platformFee     Decimal @db.Decimal(38, 18)
+  totalLocked     Decimal @db.Decimal(38, 18)
+
+  sigMask         Int
+  platformAck     Boolean     @default(false)
+  status          DealStatus  @default(PENDING_SIGS)
+
+  escrowTxHash    String?
+  payoutTxHash    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  buyerId         String
+  buyer           Buyer        @relation("BuyerDeals", fields: [buyerId], references: [id])
+
+  transporterId   String
+  transporter     Transporter  @relation("TransporterDeals", fields: [transporterId], references: [id])
+
+  platformId      Int          @default(1)
+  platform        Platform     @relation(fields: [platformId], references: [id])
+
+  signatures      Signature[]
+}
+
+model Signature {
+  id         String   @id @default(uuid())
+  dealId     String
+  deal       Deal     @relation(fields: [dealId], references: [id])
+
+  role       Role
+  txHash     String
+  signedAt   DateTime @default(now())
+
+  @@unique([dealId, role])  // one signature per role per deal
+}
