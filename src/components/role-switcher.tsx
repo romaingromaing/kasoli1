@@ -49,10 +49,16 @@ export function RoleSwitcher() {
 
   const getRoleIcon = (r: Role) => {
     switch (r) {
-      case 'FARMER': return '🌾';
-      case 'BUYER': return '🛒';
-      case 'TRANSPORTER': return '🚛';
-      default: return '👤';
+      case 'FARMER':
+        return '🌾';
+      case 'BUYER':
+        return '🛒';
+      case 'TRANSPORTER':
+        return '🚛';
+      case 'PLATFORM':
+        return '⚙️';
+      default:
+        return '👤';
     }
   };
 
@@ -74,7 +80,7 @@ export function RoleSwitcher() {
           <p className="text-sm text-dusk-gray mb-4">
             Choose the role you want to act as. You can switch between roles anytime.
           </p>
-          {(['FARMER', 'BUYER', 'TRANSPORTER'] as Role[]).map((r) => (
+          {(['FARMER', 'BUYER', 'TRANSPORTER', 'PLATFORM'] as Role[]).map((r) => (
             <Button
               key={r}
               variant={role === r ? 'secondary' : 'primary'}

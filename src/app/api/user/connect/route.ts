@@ -30,6 +30,13 @@ export async function POST(request: NextRequest) {
         case 'TRANSPORTER':
           await tx.transporter.create({ data: { walletAddress: wallet } });
           break;
+        case 'PLATFORM':
+          await tx.platform.upsert({
+            where: { id: 1 },
+            update: { walletAddress: wallet },
+            create: { id: 1, walletAddress: wallet },
+          });
+          break;
         default:
           throw new Error('Invalid role');
       }

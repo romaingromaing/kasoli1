@@ -3,7 +3,7 @@
 - **Farmers**: List batches, track receipts
 - **Transporters**: Scan QR codes, manage deliveries
 - **Buyers**: Browse market, commit payments
-- **Platform**: Finalize deals, resolve disputes
+- **Platform**: Finalize deals, resolve disputes, update diesel prices
 
 ### Smart Contract Integration
 - **EscrowSafe v3**: Secure payment handling
