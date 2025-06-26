@@ -119,7 +119,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-dusk-gray">Farmer:</span>
-                <span className="text-ocean-navy">{batch.farmer}</span>
+                <span className="text-ocean-navy">{batch.farmer?.name}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-dusk-gray">Grade:</span>
@@ -127,11 +127,11 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-dusk-gray">Weight:</span>
-                <span className="text-ocean-navy">{batch.weight}</span>
+                <span className="text-ocean-navy">{batch.weightKg} kg</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-dusk-gray">Price:</span>
-                <span className="text-ocean-navy font-semibold">{batch.price}</span>
+                <span className="text-ocean-navy font-semibold">{batch.price ?? '-'}</span>
               </div>
             </div>
           </div>

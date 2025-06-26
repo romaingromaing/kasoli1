@@ -6,48 +6,27 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { BottomNav } from '@/components/ui/bottom-nav';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CommitModal } from '@/components/buyer/commit-modal';
 
 export default function BuyerDashboard() {
   const [showCommitModal, setShowCommitModal] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<any>(null);
+  const [availableBatches, setAvailableBatches] = useState<any[]>([]);
 
-  const availableBatches = [
-    {
-      id: '1',
-      farmer: 'John Mukasa',
-      location: 'Kampala, Uganda',
-      grade: 'Grade A',
-      weight: '2,500 kg',
-      price: '$1,250',
-      rating: 4.8,
-      distance: '15 km',
-      photo: 'https://images.pexels.com/photos/265216/pexels-photo-265216.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-    {
-      id: '2',
-      farmer: 'Sarah Nakato',
-      location: 'Entebbe, Uganda',
-      grade: 'Grade B',
-      weight: '1,800 kg',
-      price: '$850',
-      rating: 4.6,
-      distance: '22 km',
-      photo: 'https://images.pexels.com/photos/1595104/pexels-photo-1595104.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-    {
-      id: '3',
-      farmer: 'David Ssemakula',
-      location: 'Jinja, Uganda',
-      grade: 'Grade A',
-      weight: '3,200 kg',
-      price: '$1,600',
-      rating: 4.9,
-      distance: '45 km',
-      photo: 'https://images.pexels.com/photos/2589457/pexels-photo-2589457.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-  ];
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/batch?status=LISTED');
+        if (!res.ok) return;
+        const data = await res.json();
+        setAvailableBatches(data);
+      } catch (err) {
+        console.error('Failed loading batches', err);
+      }
+    }
+    load();
+  }, []);
 
   const handleCommit = (batch: any) => {
     setSelectedBatch(batch);
@@ -92,7 +71,7 @@ export default function BuyerDashboard() {
                   <div className="flex gap-4">
                     <div className="w-24 h-24 bg-dusk-gray/10 rounded-xl overflow-hidden flex-shrink-0">
                       <img
-                        src={batch.photo}
+                        src={batch.photoCid ? `https://ipfs.io/ipfs/${batch.photoCid}` : ''}
                         alt="Grain batch"
                         className="w-full h-full object-cover"
                       />
@@ -101,15 +80,15 @@ export default function BuyerDashboard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h3 className="font-semibold text-ocean-navy">{batch.farmer}</h3>
+                          <h3 className="font-semibold text-ocean-navy">{batch.farmer?.name}</h3>
                           <div className="flex items-center gap-1 text-sm text-dusk-gray">
                             <MapPin size={14} />
-                            {batch.location} • {batch.distance}
+                            {batch.origin}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <Star size={14} className="text-yellow-500 fill-current" />
-                          <span className="text-sm font-medium">{batch.rating}</span>
+                          <span className="text-sm font-medium">{batch.rating ?? 0}</span>
                         </div>
                       </div>
                       
@@ -118,10 +97,10 @@ export default function BuyerDashboard() {
                           <span className="bg-teal-deep/10 text-teal-deep px-2 py-1 rounded-full">
                             {batch.grade}
                           </span>
-                          <span className="text-dusk-gray">{batch.weight}</span>
+                          <span className="text-dusk-gray">{batch.weightKg} kg</span>
                         </div>
                         <div className="text-lg font-bold text-ocean-navy">
-                          {batch.price}
+                          {batch.price ?? '-'}
                         </div>
                       </div>
                       

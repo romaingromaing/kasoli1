@@ -6,41 +6,42 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BottomNav } from '@/components/ui/bottom-nav';
 import Link from 'next/link';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
 import { CreateBatchModal } from '@/components/farmer/create-batch-modal';
 
 export default function FarmerDashboard() {
+  const { address } = useAccount();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [stats, setStats] = useState<{
+    label: string;
+    value: string;
+    icon: any;
+    color: string;
+  }[]>([]);
+  const [recentBatches, setRecentBatches] = useState<any[]>([]);
 
-  const stats = [
-    {
-      label: 'Active Batches',
-      value: '12',
-      icon: Package,
-      color: 'text-teal-deep',
-      href: '/farmer/batches',
-    },
-    {
-      label: 'Total Revenue',
-      value: '$24,500',
-      icon: TrendingUp,
-      color: 'text-aqua-mint',
-      href: '/farmer/revenue',
-    },
-    {
-      label: 'Pending Deals',
-      value: '3',
-      icon: Clock,
-      color: 'text-orange-500',
-      href: '/farmer/deals',
-    },
-  ];
-
-  const recentBatches = [
-    { id: '1', grade: 'Grade A', weight: '2,500 kg', status: 'Listed', date: '2 days ago' },
-    { id: '2', grade: 'Grade B', weight: '1,800 kg', status: 'In Transit', date: '5 days ago' },
-    { id: '3', grade: 'Grade A', weight: '3,200 kg', status: 'Delivered', date: '1 week ago' },
-  ];
+  useEffect(() => {
+    async function load() {
+      if (!address) return;
+      try {
+        const res = await fetch(`/api/batch?farmer=${address}`);
+        if (!res.ok) return;
+        const batches = await res.json();
+        setRecentBatches(batches);
+        const active = batches.filter((b: any) => b.status !== 'DELIVERED' && b.status !== 'FINALISED').length;
+        setStats([
+          { label: 'Active Batches', value: String(active), icon: Package, color: 'text-teal-deep' },
+          { label: 'Total Revenue', value: '$0', icon: TrendingUp, color: 'text-aqua-mint' },
+          { label: 'Pending Deals', value: '0', icon: Clock, color: 'text-orange-500' },
+        ]);
+      } catch (err) {
+        console.error('Failed loading farmer data', err);
+      }
+    }
+    load();
+  }, [address]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-warm-white to-lime-lush/5 pb-20">
@@ -106,18 +107,24 @@ export default function FarmerDashboard() {
                     </div>
                     <div>
                       <div className="font-medium text-ocean-navy">{batch.grade}</div>
-                      <div className="text-sm text-dusk-gray">{batch.weight}</div>
+                      <div className="text-sm text-dusk-gray">{batch.weightKg} kg</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className={`text-sm font-medium ${
-                      batch.status === 'Listed' ? 'text-teal-deep' :
-                      batch.status === 'In Transit' ? 'text-orange-500' :
-                      'text-aqua-mint'
-                    }`}>
+                    <div
+                      className={`text-sm font-medium ${
+                        batch.status === 'LISTED'
+                          ? 'text-teal-deep'
+                          : batch.status === 'IN_TRANSIT'
+                          ? 'text-orange-500'
+                          : 'text-aqua-mint'
+                      }`}
+                    >
                       {batch.status}
                     </div>
-                    <div className="text-xs text-dusk-gray">{batch.date}</div>
+                    <div className="text-xs text-dusk-gray">
+                      {new Date(batch.createdAt).toLocaleDateString()}
+                    </div>
                   </div>
                 </motion.div>
               ))}
