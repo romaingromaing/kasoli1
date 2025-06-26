@@ -45,12 +45,18 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const farmer = await prisma.farmer.findUnique({
+    // Find or create farmer
+    let farmer = await prisma.farmer.findUnique({
       where: { walletAddress: body.farmerAddress },
     });
 
     if (!farmer) {
-      return NextResponse.json({ error: 'Farmer not found' }, { status: 400 });
+      // Create new farmer if not found
+      farmer = await prisma.farmer.create({
+        data: {
+          walletAddress: body.farmerAddress,
+        },
+      });
     }
 
     const batch = await prisma.batch.create({
