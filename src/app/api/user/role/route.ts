@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Mock user roles for demo
-const mockUsers: Record<string, string> = {
-  '0x1234567890123456789012345678901234567890': 'FARMER',
-  '0x2345678901234567890123456789012345678901': 'BUYER',
-  '0x3456789012345678901234567890123456789012': 'TRANSPORTER',
-  '0x4567890123456789012345678901234567890123': 'PLATFORM',
-};
+import prisma from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -16,8 +9,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Address required' }, { status: 400 });
   }
 
-  // In a real app, you'd query your database here
-  const role = mockUsers[address] || 'FARMER'; // Default to FARMER for demo
+  const wallet = address.toLowerCase();
+
+  const [farmer, buyer, transporter, platform] = await Promise.all([
+    prisma.farmer.findUnique({ where: { walletAddress: wallet } }),
+    prisma.buyer.findUnique({ where: { walletAddress: wallet } }),
+    prisma.transporter.findUnique({ where: { walletAddress: wallet } }),
+    prisma.platform.findFirst({ where: { walletAddress: wallet } }),
+  ]);
+
+  let role: string | null = null;
+  if (farmer) role = 'FARMER';
+  else if (buyer) role = 'BUYER';
+  else if (transporter) role = 'TRANSPORTER';
+  else if (platform) role = 'PLATFORM';
 
   return NextResponse.json({ role });
 }

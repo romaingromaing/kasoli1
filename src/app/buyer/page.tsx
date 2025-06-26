@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { BottomNav } from '@/components/ui/bottom-nav';
 import { useState, useEffect } from 'react';
 import { CommitModal } from '@/components/buyer/commit-modal';
+import { useRequireRole } from '@/lib/hooks/useRequireRole';
 
 export default function BuyerDashboard() {
+  useRequireRole('BUYER');
   const [showCommitModal, setShowCommitModal] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<any>(null);
   const [availableBatches, setAvailableBatches] = useState<any[]>([]);

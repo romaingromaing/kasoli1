@@ -8,8 +8,10 @@ import { BottomNav } from '@/components/ui/bottom-nav';
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { QRScanModal } from '@/components/transporter/qr-scan-modal';
+import { useRequireRole } from '@/lib/hooks/useRequireRole';
 
 export default function TransporterDashboard() {
+  useRequireRole('TRANSPORTER');
   const { address } = useAccount();
   const [showScanModal, setShowScanModal] = useState(false);
   const [activeDeliveries, setActiveDeliveries] = useState<any[]>([]);

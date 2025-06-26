@@ -10,8 +10,10 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { CreateBatchModal } from '@/components/farmer/create-batch-modal';
+import { useRequireRole } from '@/lib/hooks/useRequireRole';
 
 export default function FarmerDashboard() {
+  useRequireRole('FARMER');
   const { address } = useAccount();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [stats, setStats] = useState<{

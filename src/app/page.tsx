@@ -3,22 +3,33 @@
 import { motion } from 'framer-motion';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
-import { useRole } from '@/lib/hooks/useRole';
+import { useRole, Role } from '@/lib/hooks/useRole';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Wheat, Shield, Truck, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Home() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const { role, loading } = useRole();
+  const [selectedRole, setSelectedRole] = useState<Role>('FARMER');
   const router = useRouter();
 
   useEffect(() => {
-    if (isConnected && role && !loading) {
-      router.push(`/${role.toLowerCase()}`);
+    async function register() {
+      if (isConnected && address && selectedRole && !role && !loading) {
+        await fetch('/api/user/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, role: selectedRole }),
+        });
+        router.push(`/${selectedRole.toLowerCase()}`);
+      } else if (isConnected && role && !loading) {
+        router.push(`/${role.toLowerCase()}`);
+      }
     }
-  }, [isConnected, role, loading, router]);
+    register();
+  }, [isConnected, address, role, loading, selectedRole, router]);
 
   const features = [
     {
@@ -86,6 +97,18 @@ export default function Home() {
             transition={{ delay: 0.3, duration: 0.4 }}
             className="mb-12"
           >
+            <div className="flex justify-center gap-3 mb-6">
+              {(['FARMER', 'BUYER', 'TRANSPORTER'] as Role[]).map((r) => (
+                <Button
+                  key={r}
+                  variant={selectedRole === r ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedRole(r)}
+                >
+                  {r.charAt(0) + r.slice(1).toLowerCase()}
+                </Button>
+              ))}
+            </div>
             <ConnectButton.Custom>
               {({
                 account,
