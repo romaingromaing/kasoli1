@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Truck, Calculator } from 'lucide-react';
+import { Truck, Calculator, MapPin } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,10 @@ interface CommitModalProps {
 }
 
 export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
-  const [distance, setDistance] = useState('25');
+  const [distance, setDistance] = useState('');
+  const [locationInput, setLocationInput] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [freightCost, setFreightCost] = useState<bigint>(0n);
   const [step, setStep] = useState<'calculate' | 'confirm' | 'processing'>('calculate');
 
@@ -37,6 +40,33 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   const { writeContract, isPending } = useWriteContract();
 
   useEffect(() => {
+    const controller = new AbortController();
+    if (locationInput.length > 2) {
+      fetch(`/api/places?input=${encodeURIComponent(locationInput)}`, {
+        signal: controller.signal,
+      })
+        .then((res) => res.json())
+        .then((data) => setSuggestions(data.predictions || []))
+        .catch(() => {});
+    } else {
+      setSuggestions([]);
+    }
+    return () => controller.abort();
+  }, [locationInput]);
+
+  useEffect(() => {
+    if (!coords || !batch) return;
+    fetch(`/api/distance?batchId=${batch.id}&lat=${coords.lat}&lng=${coords.lng}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.distance !== undefined) {
+          setDistance(data.distance.toFixed(2));
+        }
+      })
+      .catch(() => {});
+  }, [coords, batch]);
+
+  useEffect(() => {
     if (freightQuote) {
       setFreightCost(freightQuote);
     }
@@ -48,6 +78,25 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
       return;
     }
     setStep('confirm');
+  };
+
+  const selectSuggestion = async (placeId: string, description: string) => {
+    setLocationInput(description);
+    setSuggestions([]);
+    const res = await fetch(`/api/places?placeId=${placeId}`);
+    const data = await res.json();
+    const loc = data.result?.geometry?.location;
+    if (loc) {
+      setCoords({ lat: loc.lat, lng: loc.lng });
+    }
+  };
+
+  const useCurrentLocation = () => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const { latitude, longitude } = pos.coords;
+      setLocationInput('Current Location');
+      setCoords({ lat: latitude, lng: longitude });
+    });
   };
 
   const handleCommit = async () => {
@@ -135,6 +184,31 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
               </div>
             </div>
           </div>
+
+          <Input
+            label="Delivery Location"
+            type="text"
+            value={locationInput}
+            onChange={(e) => setLocationInput(e.target.value)}
+            placeholder="Search location"
+            icon={<MapPin size={20} />}
+          />
+          {suggestions.length > 0 && (
+            <ul className="border border-dusk-gray/30 rounded-xl bg-white max-h-40 overflow-y-auto">
+              {suggestions.map((s) => (
+                <li
+                  key={s.place_id}
+                  className="px-4 py-2 cursor-pointer hover:bg-lime-lush/20"
+                  onClick={() => selectSuggestion(s.place_id, s.description)}
+                >
+                  {s.description}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button type="button" variant="outline" onClick={useCurrentLocation} className="w-full">
+            Use Current Location
+          </Button>
 
           <Input
             label="Delivery Distance (km)"
