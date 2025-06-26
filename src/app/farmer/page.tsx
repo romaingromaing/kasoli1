@@ -5,6 +5,8 @@ import { Plus, Package, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BottomNav } from '@/components/ui/bottom-nav';
+import Link from 'next/link';
+
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { CreateBatchModal } from '@/components/farmer/create-batch-modal';
@@ -65,20 +67,21 @@ export default function FarmerDashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {stats.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: index * 0.1, duration: 0.4 }}
-              >
-                <Card className="text-center">
-                  <stat.icon className={`w-8 h-8 mx-auto mb-3 ${stat.color}`} />
-                  <div className="text-2xl font-bold text-ocean-navy mb-1">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm text-dusk-gray">{stat.label}</div>
-                </Card>
-              </motion.div>
+              <Link key={stat.label} href={stat.href} passHref>
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: index * 0.1, duration: 0.4 }}
+                >
+                  <Card className="text-center">
+                    <stat.icon className={`w-8 h-8 mx-auto mb-3 ${stat.color}`} />
+                    <div className="text-2xl font-bold text-ocean-navy mb-1">
+                      {stat.value}
+                    </div>
+                    <div className="text-sm text-dusk-gray">{stat.label}</div>
+                  </Card>
+                </motion.div>
+              </Link>
             ))}
           </div>
 
