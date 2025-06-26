@@ -69,13 +69,17 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
       const metaCID = metaJson.cid as string;
 
       setBatchData({ metaCid: metaCID, photoCid: photoCID });
+      if (!address) {
+        toast.error('You must be connected to create a batch');
+        return;
+      }
 
       writeContract({
         address: CONTRACTS.RECEIPT as `0x${string}`,
         abi: RECEIPT_ABI,
         functionName: 'mint',
         args: [
-          '0x1234567890123456789012345678901234567890' as `0x${string}`, // farmer address
+          address as `0x${string}`, // farmer address
           BigInt(Math.floor(parseFloat(formData.weight) * 1000)), // weight in grams
           parseInt(formData.grade) as 1 | 2 | 3 | 4 | 5,
           metaCID,
