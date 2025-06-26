@@ -21,6 +21,7 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
   const [formData, setFormData] = useState({
     weight: '',
     grade: '1',
+    origin: '',
     photo: null as File | null,
   });
   const [step, setStep] = useState<'form' | 'minting' | 'success'>('form');
@@ -36,7 +37,7 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.weight || !formData.photo) {
+    if (!formData.weight || !formData.photo || !formData.origin) {
       toast.error('Please fill all fields and upload a photo');
       return;
     }
@@ -96,7 +97,7 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
 
   const handleClose = () => {
     setStep('form');
-    setFormData({ weight: '', grade: '1', photo: null });
+    setFormData({ weight: '', grade: '1', origin: '', photo: null });
     setTokenId('');
     onClose();
   };
@@ -133,6 +134,7 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
             photoCid: batchData.photoCid,
             grade: formData.grade,
             weightKg: parseFloat(formData.weight),
+            origin: formData.origin,
             farmerAddress: address,
           }),
         });
@@ -160,6 +162,15 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
             value={formData.weight}
             onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
             placeholder="Enter weight in kg"
+            required
+          />
+
+          <Input
+            label="Origin"
+            type="text"
+            value={formData.origin}
+            onChange={(e) => setFormData(prev => ({ ...prev, origin: e.target.value }))}
+            placeholder="e.g. Kampala Warehouse"
             required
           />
 

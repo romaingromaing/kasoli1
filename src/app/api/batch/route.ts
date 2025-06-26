@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
         receiptTokenId: body.receiptTokenId,
         metaCid: body.metaCid,
         photoCid: body.photoCid,
+        origin: body.origin,
         grade: body.grade,
         weightKg: body.weightKg,
         farmerId: farmer.id,
