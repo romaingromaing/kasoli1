@@ -34,9 +34,27 @@ export default function FarmerDashboard() {
         setRecentBatches(batches);
         const active = batches.filter((b: any) => b.status !== 'DELIVERED' && b.status !== 'FINALISED').length;
         setStats([
-          { label: 'Active Batches', value: String(active), icon: Package, color: 'text-teal-deep' },
-          { label: 'Total Revenue', value: '$0', icon: TrendingUp, color: 'text-aqua-mint' },
-          { label: 'Pending Deals', value: '0', icon: Clock, color: 'text-orange-500' },
+          {
+            label: 'Active Batches',
+            value: String(active),
+            icon: Package,
+            color: 'text-teal-deep',
+            href: '/farmer/batches',
+          },
+          {
+            label: 'Total Revenue',
+            value: '$0',
+            icon: TrendingUp,
+            color: 'text-aqua-mint',
+            href: '/farmer/revenue',
+          },
+          {
+            label: 'Pending Deals',
+            value: '0',
+            icon: Clock,
+            color: 'text-orange-500',
+            href: '/farmer/deals',
+          },
         ]);
       } catch (err) {
         console.error('Failed loading farmer data', err);
