@@ -83,6 +83,15 @@ CREATE TABLE "Batch" (
 CREATE TABLE "Deal" (
     "id" TEXT NOT NULL,
     "batchId" TEXT NOT NULL,
+    "origin" TEXT,
+    "originLat" DOUBLE PRECISION,
+    "originLng" DOUBLE PRECISION,
+    "destination" TEXT,
+    "destinationLat" DOUBLE PRECISION,
+    "destinationLng" DOUBLE PRECISION,
+    "distanceKm" DOUBLE PRECISION,
+    "weightKg" DOUBLE PRECISION,
+    "farmerId" TEXT NOT NULL,
     "farmerAmount" DECIMAL(38,18) NOT NULL,
     "freightAmount" DECIMAL(38,18),
     "platformFee" DECIMAL(38,18),
@@ -154,6 +163,9 @@ ALTER TABLE "Batch" ADD CONSTRAINT "Batch_transporterId_fkey" FOREIGN KEY ("tran
 
 -- AddForeignKey
 ALTER TABLE "Deal" ADD CONSTRAINT "Deal_batchId_fkey" FOREIGN KEY ("batchId") REFERENCES "Batch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Deal" ADD CONSTRAINT "Deal_farmerId_fkey" FOREIGN KEY ("farmerId") REFERENCES "Farmer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Deal" ADD CONSTRAINT "Deal_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

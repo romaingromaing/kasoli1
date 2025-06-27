@@ -160,7 +160,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
 
     try {
       const totalPrice = calculateTotalPrice(batch);
-      const farmerAmount = BigInt(Math.floor(totalPrice * 1e18));
+      const farmerAmount = totalPrice; // Store as regular USD amount, not Wei
 
       await fetch('/api/deal', {
         method: 'POST',

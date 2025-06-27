@@ -51,6 +51,7 @@ model Farmer {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   batches        Batch[]
+  deals          Deal[]
 }
 
 model Buyer {
