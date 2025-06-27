@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useReadContract, useAccount } from 'wagmi';
 import { CONTRACTS, ORACLE_ABI } from '@/lib/contracts';
+import { PLATFORM_CONFIG, calculatePlatformFee, convertUGXToUSD, formatCurrency } from '@/lib/constants';
 import toast from 'react-hot-toast';
 
 interface CommitModalProps {
@@ -160,7 +161,9 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
 
     try {
       const totalPrice = calculateTotalPrice(batch);
+      const platformFee = calculatePlatformFee(totalPrice);
       const farmerAmount = totalPrice; // Store as regular USD amount, not Wei
+      const freightAmountUSD = freightCost ? convertUGXToUSD(Number(freightCost)) : 0;
 
       await fetch('/api/deal', {
         method: 'POST',
@@ -169,6 +172,8 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
           batchId: batch.id,
           buyerAddress: address,
           farmerAmount: farmerAmount.toString(),
+          platformFee: platformFee.toString(),
+          freightAmount: freightAmountUSD.toString(),
           originLat: batch.locationLat,
           originLng: batch.locationLng,
           origin: batch.origin,
@@ -194,9 +199,8 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   };
 
   const formatUSD = (ugx: bigint) => {
-    // Mock conversion rate: 1 USD = 3700 UGX
-    const usd = Number(ugx) / 3700;
-    return `$${usd.toFixed(2)}`;
+    const usd = convertUGXToUSD(Number(ugx));
+    return formatCurrency(usd);
   };
 
   const calculateTotalPrice = (batch: any): number => {
@@ -205,7 +209,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   };
 
   const formatPrice = (amount: number): string => {
-    return `$${amount.toFixed(2)}`;
+    return formatCurrency(amount);
   };
 
   if (!batch) return null;
@@ -334,9 +338,9 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
                 <span className="text-ocean-navy">{formatUSD(freightCost)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-dusk-gray">Platform Fee (3%):</span>
+                <span className="text-dusk-gray">Platform Fee ({(PLATFORM_CONFIG.PLATFORM_FEE_RATE * 100).toFixed(0)}%):</span>
                 <span className="text-ocean-navy">
-                  {formatPrice(calculateTotalPrice(batch) * 0.03)}
+                  {formatPrice(calculatePlatformFee(calculateTotalPrice(batch)))}
                 </span>
               </div>
               <hr className="border-dusk-gray/20" />
@@ -345,8 +349,8 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
                 <span className="text-ocean-navy">
                   {formatPrice(
                     calculateTotalPrice(batch) +
-                    Number(freightCost) / 3700 +
-                    calculateTotalPrice(batch) * 0.03
+                    convertUGXToUSD(Number(freightCost)) +
+                    calculatePlatformFee(calculateTotalPrice(batch))
                   )}
                 </span>
               </div>

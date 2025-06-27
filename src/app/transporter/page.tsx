@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { QRScanModal } from '@/components/transporter/qr-scan-modal';
 import { useRequireRole } from '@/lib/hooks/useRequireRole';
+import { formatCurrency } from '@/lib/constants';
 
 export default function TransporterDashboard() {
   useRequireRole('TRANSPORTER');
@@ -212,8 +213,10 @@ export default function TransporterDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-ocean-navy">{delivery.freightAmount ?? ''}</div>
-                      <div className="text-sm text-dusk-gray">-</div>
+                      <div className="font-semibold text-ocean-navy">
+                        {delivery.freightAmount ? formatCurrency(parseFloat(delivery.freightAmount)) : 'TBD'}
+                      </div>
+                      <div className="text-sm text-dusk-gray">Freight</div>
                     </div>
                   </div>
 

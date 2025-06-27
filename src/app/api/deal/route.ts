@@ -89,6 +89,8 @@ export async function POST(req: NextRequest) {
       batchId,
       buyerAddress,
       farmerAmount,
+      platformFee,
+      freightAmount,
       originLat,
       originLng,
       destinationLat,
@@ -115,6 +117,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 400 });
     }
 
+    // Calculate total locked amount
+    const farmerAmountNum = parseFloat(farmerAmount);
+    const platformFeeNum = parseFloat(platformFee || '0');
+    const freightAmountNum = parseFloat(freightAmount || '0');
+    const totalLocked = farmerAmountNum + platformFeeNum + freightAmountNum;
+
     const deal = await prisma.deal.create({
       data: {
         batchId,
@@ -129,6 +137,9 @@ export async function POST(req: NextRequest) {
         distanceKm: distanceKm ?? null,
         weightKg: weightKg ?? batch?.weightKg ?? null,
         farmerAmount,
+        platformFee: platformFee || null,
+        freightAmount: freightAmount || null,
+        totalLocked: totalLocked.toString(),
         signatureTimeoutHours,
         timeoutAt,
         sigMask: 0,
