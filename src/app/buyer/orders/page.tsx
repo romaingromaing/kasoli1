@@ -12,6 +12,8 @@ export default function BuyerOrdersPage() {
   useRequireRole('BUYER');
   const { address } = useAccount();
   const [orders, setOrders] = useState<any[]>([]);
+  const [pendingDeals, setPendingDeals] = useState<any[]>([]);
+  const [historyDeals, setHistoryDeals] = useState<any[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -21,6 +23,14 @@ export default function BuyerOrdersPage() {
         if (!res.ok) return;
         const data = await res.json();
         setOrders(data);
+        const pending = data.filter(
+          (d: any) => d.status !== 'PAID_OUT' && d.status !== 'DISPUTED'
+        );
+        setPendingDeals(pending);
+        const history = data.filter(
+          (d: any) => d.status === 'PAID_OUT' || d.status === 'DISPUTED'
+        );
+        setHistoryDeals(history);
       } catch (err) {
         console.error('Failed loading orders', err);
       }
@@ -38,8 +48,61 @@ export default function BuyerOrdersPage() {
         >
           <h1 className="text-3xl font-bold text-ocean-navy mb-6">Orders</h1>
 
+          <h2 className="text-xl font-semibold text-ocean-navy mb-4">Pending Deals</h2>
+          <div className="space-y-4 mb-8">
+            {pendingDeals.length === 0 ? (
+              <p className="text-dusk-gray">No pending deals</p>
+            ) : (
+              pendingDeals.map((order, index) => (
+                <motion.div
+                  key={order.id}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: index * 0.05, duration: 0.3 }}
+                >
+                  <Card className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-teal-deep/10 rounded-full flex items-center justify-center">
+                      <Package className="w-6 h-6 text-teal-deep" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-ocean-navy">
+                        {order.batch?.grade || 'Batch'}
+                      </div>
+                      <div className="text-sm text-dusk-gray">
+                        {order.batch?.weightKg} kg
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-dusk-gray mt-1">
+                        <MapPin size={14} />
+                        {order.batch?.origin}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div
+                        className={`text-sm font-medium ${
+                          order.status === 'PENDING_SIGS'
+                            ? 'text-teal-deep'
+                            : order.status === 'PAID_OUT'
+                            ? 'text-aqua-mint'
+                            : 'text-dusk-gray'
+                        }`}
+                      >
+                        {order.status}
+                      </div>
+                      <div className="text-xs text-dusk-gray">
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  </Card>
+                </motion.div>
+              ))
+            )}
+          </div>
+
+          <h2 className="text-xl font-semibold text-ocean-navy mb-4">Order History</h2>
           <div className="space-y-4">
-            {orders.map((order, index) => (
+            {historyDeals.map((order, index) => (
               <motion.div
                 key={order.id}
                 initial={{ x: -20, opacity: 0 }}
