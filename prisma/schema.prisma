@@ -159,3 +159,11 @@ model Signature {
 
   @@unique([dealId, role])  // one signature per role per deal
 }
+
+model User {
+  id             String   @id @default(uuid())
+  walletAddress  String   @unique
+  currentRole    Role     // Track the user's currently active role
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

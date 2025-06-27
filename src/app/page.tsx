@@ -98,7 +98,7 @@ export default function Home() {
             className="mb-12"
           >
             <div className="flex justify-center gap-3 mb-6">
-              {(['FARMER', 'BUYER', 'TRANSPORTER'] as Role[]).map((r) => (
+              {(['FARMER', 'BUYER', 'TRANSPORTER'] as const).map((r) => (
                 <Button
                   key={r}
                   variant={selectedRole === r ? 'primary' : 'outline'}

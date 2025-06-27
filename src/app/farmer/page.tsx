@@ -21,6 +21,7 @@ export default function FarmerDashboard() {
     value: string;
     icon: any;
     color: string;
+    href: string;
   }[]>([]);
   const [recentBatches, setRecentBatches] = useState<any[]>([]);
 

@@ -33,10 +33,14 @@ export function RoleSwitcher() {
         // Navigate to the new role page
         router.push(`/${r.toLowerCase()}`);
       } else {
-        console.error('Failed to switch role');
+        const errorData = await response.json();
+        console.error('Failed to switch role:', errorData);
+        // Show user-friendly error message
+        alert(`Failed to switch role: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error switching role:', error);
+      alert('Network error while switching roles. Please try again.');
     } finally {
       setSwitching(false);
     }

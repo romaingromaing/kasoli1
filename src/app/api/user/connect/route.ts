@@ -9,38 +9,49 @@ export async function POST(request: NextRequest) {
     }
     const wallet = (address as string).toLowerCase();
     
-    // For role switching, we need to remove old roles and set the new one
-    // Use a transaction to ensure consistency
-    await prisma.$transaction(async (tx) => {
-      // Remove from all role tables first
-      await Promise.all([
-        tx.farmer.deleteMany({ where: { walletAddress: wallet } }),
-        tx.buyer.deleteMany({ where: { walletAddress: wallet } }),
-        tx.transporter.deleteMany({ where: { walletAddress: wallet } }),
-      ]);
-      
-      // Then add to the new role table
-      switch (role) {
-        case 'FARMER':
-          await tx.farmer.create({ data: { walletAddress: wallet } });
-          break;
-        case 'BUYER':
-          await tx.buyer.create({ data: { walletAddress: wallet } });
-          break;
-        case 'TRANSPORTER':
-          await tx.transporter.create({ data: { walletAddress: wallet } });
-          break;
-        case 'PLATFORM':
-          await tx.platform.upsert({
-            where: { id: 1 },
-            update: { walletAddress: wallet },
-            create: { id: 1, walletAddress: wallet },
-          });
-          break;
-        default:
-          throw new Error('Invalid role');
-      }
+    // Use the new User model to track active role
+    await prisma.user.upsert({
+      where: { walletAddress: wallet },
+      update: { currentRole: role },
+      create: { 
+        walletAddress: wallet, 
+        currentRole: role 
+      },
     });
+
+    // Still create the role-specific records if they don't exist (for backwards compatibility)
+    switch (role) {
+      case 'FARMER':
+        await prisma.farmer.upsert({
+          where: { walletAddress: wallet },
+          update: {},
+          create: { walletAddress: wallet },
+        });
+        break;
+      case 'BUYER':
+        await prisma.buyer.upsert({
+          where: { walletAddress: wallet },
+          update: {},
+          create: { walletAddress: wallet },
+        });
+        break;
+      case 'TRANSPORTER':
+        await prisma.transporter.upsert({
+          where: { walletAddress: wallet },
+          update: {},
+          create: { walletAddress: wallet },
+        });
+        break;
+      case 'PLATFORM':
+        await prisma.platform.upsert({
+          where: { id: 1 },
+          update: { walletAddress: wallet },
+          create: { id: 1, walletAddress: wallet },
+        });
+        break;
+      default:
+        return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
     
     return NextResponse.json({ success: true });
   } catch (err) {
