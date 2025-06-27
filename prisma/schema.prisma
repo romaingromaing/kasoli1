@@ -31,6 +31,8 @@ enum BatchStatus {
 }
 
 enum DealStatus {
+  PENDING_DRIVER  // awaiting transporter to accept
+  AWAITING_ESCROW // transporter accepted, waiting buyer lock
   PENDING_SIGS    // waiting for all 3 operational sigs
   READY_TO_FINAL  // all sigs present, platform pending
   PAID_OUT
@@ -116,13 +118,13 @@ model Deal {
   batch           Batch       @relation(fields: [batchId], references: [id])
 
   farmerAmount    Decimal @db.Decimal(38, 18)
-  freightAmount   Decimal @db.Decimal(38, 18)
-  platformFee     Decimal @db.Decimal(38, 18)
-  totalLocked     Decimal @db.Decimal(38, 18)
+  freightAmount   Decimal? @db.Decimal(38, 18)
+  platformFee     Decimal? @db.Decimal(38, 18)
+  totalLocked     Decimal? @db.Decimal(38, 18)
 
   sigMask         Int
   platformAck     Boolean     @default(false)
-  status          DealStatus  @default(PENDING_SIGS)
+  status          DealStatus  @default(PENDING_DRIVER)
   
   // Timeout for signatures (in hours, default 24 hours)
   signatureTimeoutHours Int     @default(24)
@@ -137,8 +139,8 @@ model Deal {
   buyerId         String
   buyer           Buyer        @relation("BuyerDeals", fields: [buyerId], references: [id])
 
-  transporterId   String
-  transporter     Transporter  @relation("TransporterDeals", fields: [transporterId], references: [id])
+  transporterId   String?
+  transporter     Transporter? @relation("TransporterDeals", fields: [transporterId], references: [id])
 
   platformId      Int          @default(1)
   platform        Platform     @relation(fields: [platformId], references: [id])
