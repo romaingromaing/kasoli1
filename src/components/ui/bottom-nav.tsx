@@ -20,6 +20,7 @@ const navItems = {
   TRANSPORTER: [
     { icon: Home, label: 'Dashboard', href: '/transporter' },
     { icon: Truck, label: 'Deliveries', href: '/transporter/deliveries' },
+    { icon: Package, label: 'Deals', href: '/transporter/deals' },
     { icon: Settings, label: 'Profile', href: '/transporter/profile' },
   ],
   PLATFORM: [
