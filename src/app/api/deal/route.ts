@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     if (buyerAddr) {
       const buyer = await prisma.buyer.findUnique({
-        where: { walletAddress: buyerAddr },
+        where: { walletAddress: buyerAddr.toLowerCase() },
       });
       if (!buyer) {
         return NextResponse.json({ error: 'Buyer not found' }, { status: 400 });
@@ -66,7 +66,11 @@ export async function GET(req: NextRequest) {
       const deals = await prisma.deal.findMany({
         where: { buyerId: buyer.id },
         include: {
-          batch: true,
+          batch: {
+            include: {
+              farmer: true,
+            },
+          },
           buyer: true,
           transporter: true,
         },
