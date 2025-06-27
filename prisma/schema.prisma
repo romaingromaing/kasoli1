@@ -118,7 +118,11 @@ model Deal {
   batch           Batch       @relation(fields: [batchId], references: [id])
 
   origin          String?
+  originLat       Float?
+  originLng       Float?
   destination     String?
+  destinationLat  Float?
+  destinationLng  Float?
   distanceKm      Float?
   weightKg        Float?
   farmerId        String
