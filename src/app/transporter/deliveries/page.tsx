@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { motion } from 'framer-motion';
-import { MapPin } from 'lucide-react';
+import { MapPin, CheckCircle, XCircle, User, Truck, ShoppingCart } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import { BottomNav } from '@/components/ui/bottom-nav';
 import { Card } from '@/components/ui/card';
@@ -33,9 +34,65 @@ export default function TransporterDeliveriesPage() {
     load();
   }, [address]);
 
+  async function handleTransporterSign(delivery: any) {
+    try {
+      console.log('Sign Pickup button clicked for delivery:', delivery);
+      const res = await fetch(`/api/deal/${delivery.id}/transporter-sign`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      console.log('Sign pickup API response:', res.status, data);
+      if (!res.ok) {
+        toast.error('Failed to sign pickup');
+        return;
+      }
+      toast.success('Pickup signed!');
+      // Refresh deliveries
+      if (address) {
+        const res = await fetch(`/api/deal?transporter=${address}`);
+        if (res.ok) {
+          const data = await res.json();
+          const pending = data.filter(
+            (deal: any) => deal.status !== 'PAID_OUT' && deal.status !== 'DISPUTED'
+          );
+          setDeliveries(pending);
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to sign pickup');
+      console.error('Error in handleTransporterSign:', err);
+    }
+  }
+
+  function renderSigStatus(delivery: any) {
+    const sigMask = delivery.sigMask || 0;
+    return (
+      <div className="flex gap-2 mt-2">
+        <span className="flex items-center gap-1 text-xs">
+          <User size={14} className={sigMask & 0x2 ? 'text-green-600' : 'text-gray-400'} />
+          Farmer
+          {sigMask & 0x2 ? <CheckCircle size={12} className="text-green-600" /> : <XCircle size={12} className="text-gray-400" />}
+        </span>
+        <span className="flex items-center gap-1 text-xs">
+          <Truck size={14} className={sigMask & 0x4 ? 'text-green-600' : 'text-gray-400'} />
+          Transporter
+          {sigMask & 0x4 ? <CheckCircle size={12} className="text-green-600" /> : <XCircle size={12} className="text-gray-400" />}
+        </span>
+        <span className="flex items-center gap-1 text-xs">
+          <ShoppingCart size={14} className={sigMask & 0x1 ? 'text-green-600' : 'text-gray-400'} />
+          Buyer
+          {sigMask & 0x1 ? <CheckCircle size={12} className="text-green-600" /> : <XCircle size={12} className="text-gray-400" />}
+        </span>
+      </div>
+    );
+  }
+
+  console.log('Deliveries for transporter:', deliveries);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-warm-white to-lime-lush/5 pb-20">
       <div className="container mx-auto px-4 py-8">
+        <Button onClick={() => alert('Button works!')} className="mb-4">Test Button</Button>
         <motion.div
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -80,6 +137,7 @@ export default function TransporterDeliveriesPage() {
                       <span className="text-dusk-gray">Delivery:</span>
                       <span className="text-ocean-navy">{delivery.batch?.destination}</span>
                     </div>
+                    {renderSigStatus(delivery)}
                   </div>
 
                   <div className="flex justify-between items-center">
@@ -94,13 +152,19 @@ export default function TransporterDeliveriesPage() {
                     >
                       {delivery.status}
                     </span>
-                    <Button size="sm" variant="outline">
-                      {delivery.status === 'PENDING_SIGS'
-                        ? 'Sign Pickup'
-                        : delivery.status === 'AWAITING_ESCROW'
-                        ? 'Awaiting Buyer'
-                        : 'Track'}
-                    </Button>
+                    {delivery.status === 'PENDING_SIGS' && (delivery.sigMask & 0x2) && !(delivery.sigMask & 0x4) ? (
+                      <Button size="sm" variant="outline" onClick={() => { console.log('Button onClick for delivery:', delivery); handleTransporterSign(delivery); }}>
+                        Sign Pickup
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled>
+                        {delivery.status === 'AWAITING_ESCROW'
+                          ? 'Awaiting Buyer'
+                          : delivery.status === 'PENDING_SIGS' && !(delivery.sigMask & 0x2)
+                          ? 'Waiting for Farmer'
+                          : 'Track'}
+                      </Button>
+                    )}
                   </div>
                 </Card>
               </motion.div>

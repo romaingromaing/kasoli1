@@ -17,16 +17,16 @@ export async function POST(
       );
     }
 
-    // Find the transporter
-    const transporter = await prisma.transporter.findUnique({
+    // Find or create the transporter
+    let transporter = await prisma.transporter.findUnique({
       where: { walletAddress: transporterAddress.toLowerCase() },
     });
 
     if (!transporter) {
-      return NextResponse.json(
-        { error: 'Transporter not found' },
-        { status: 404 }
-      );
+      // Create transporter if not found (first time accepting a deal)
+      transporter = await prisma.transporter.create({
+        data: { walletAddress: transporterAddress.toLowerCase() },
+      });
     }
 
     // Find the deal and ensure it's still available

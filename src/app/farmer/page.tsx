@@ -136,12 +136,16 @@ export default function FarmerDashboard() {
                       className={`text-sm font-medium ${
                         batch.status === 'LISTED'
                           ? 'text-teal-deep'
-                          : batch.status === 'IN_TRANSIT'
+                          : batch.status === 'IN_TRANSIT' && batch.deal && (batch.deal.sigMask & 0x2)
                           ? 'text-orange-500'
                           : 'text-aqua-mint'
                       }`}
                     >
-                      {batch.status}
+                      {batch.status === 'IN_TRANSIT' && batch.deal && (batch.deal.sigMask & 0x2)
+                        ? 'IN_TRANSIT'
+                        : batch.status === 'IN_TRANSIT'
+                        ? 'LOCKED'
+                        : batch.status}
                     </div>
                     <div className="text-xs text-dusk-gray">
                       {new Date(batch.createdAt).toLocaleDateString()}

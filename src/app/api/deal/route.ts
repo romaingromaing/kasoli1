@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
     if (transporterAddr) {
       const transporter = await prisma.transporter.findUnique({
-        where: { walletAddress: transporterAddr },
+        where: { walletAddress: transporterAddr.toLowerCase() },
       });
       if (!transporter) {
         return NextResponse.json(
@@ -29,10 +29,23 @@ export async function GET(req: NextRequest) {
           },
           buyer: true,
           transporter: true,
+          platform: true,
         },
         orderBy: { createdAt: 'desc' },
       });
-      return NextResponse.json(deals);
+      // Marshal deals into deliveries for the frontend
+      const deliveries = deals.map(deal => ({
+        id: deal.id,
+        status: deal.status,
+        freightAmount: deal.freightAmount,
+        batch: deal.batch,
+        buyer: deal.buyer,
+        createdAt: deal.createdAt,
+        updatedAt: deal.updatedAt,
+        sigMask: deal.sigMask,
+        // Add any other fields needed by the frontend here
+      }));
+      return NextResponse.json(deliveries);
     }
 
     // Get pending driver deals (no transporter assigned yet)
@@ -50,6 +63,7 @@ export async function GET(req: NextRequest) {
           },
           buyer: true,
           transporter: true,
+          platform: true,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -73,6 +87,7 @@ export async function GET(req: NextRequest) {
           },
           buyer: true,
           transporter: true,
+          platform: true,
         },
         orderBy: { createdAt: 'desc' },
       });

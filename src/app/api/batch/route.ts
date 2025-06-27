@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
           ...(status ? { status: status as any } : {})
         },
         orderBy: { createdAt: 'desc' },
-        include: { farmer: true }
+        include: { farmer: true, deal: true }
       });
 
       return NextResponse.json(batches);
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const batches = await prisma.batch.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { farmer: true }
+      include: { farmer: true, deal: true }
     });
     return NextResponse.json(batches);
   } catch (error) {

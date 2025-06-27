@@ -10,6 +10,7 @@ import { useAccount } from 'wagmi';
 import { QRScanModal } from '@/components/transporter/qr-scan-modal';
 import { useRequireRole } from '@/lib/hooks/useRequireRole';
 import { formatCurrency } from '@/lib/constants';
+import toast from 'react-hot-toast';
 
 export default function TransporterDashboard() {
   useRequireRole('TRANSPORTER');
@@ -71,6 +72,32 @@ export default function TransporterDashboard() {
       }
     } catch (err) {
       console.error('Failed to accept deal', err);
+    }
+  };
+
+  // Add handler for transporter sign
+  const handleTransporterSign = async (delivery: any) => {
+    try {
+      const res = await fetch(`/api/deal/${delivery.id}/transporter-sign`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error('Failed to sign pickup');
+        return;
+      }
+      toast.success('Pickup signed!');
+      // Refresh deliveries
+      if (address) {
+        const assignedRes = await fetch(`/api/deal?transporter=${address}`);
+        if (assignedRes.ok) {
+          const assignedDeals = await assignedRes.json();
+          setActiveDeliveries(assignedDeals);
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to sign pickup');
+      console.error('Error in handleTransporterSign:', err);
     }
   };
 
@@ -246,13 +273,17 @@ export default function TransporterDashboard() {
                     }`}>
                       {delivery.status}
                     </span>
-                    <Button size="sm" variant="outline">
-                      {delivery.status === 'PENDING_SIGS'
-                        ? 'Sign Pickup'
-                        : delivery.status === 'AWAITING_ESCROW'
-                        ? 'Awaiting Buyer'
-                        : 'Track'}
-                    </Button>
+                    {(delivery.status === 'PENDING_SIGS' && (delivery.sigMask & 0x2) && !(delivery.sigMask & 0x4)) ? (
+                      <Button size="sm" variant="outline" onClick={() => handleTransporterSign(delivery)}>
+                        Sign Pickup
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled>
+                        {delivery.status === 'AWAITING_ESCROW'
+                          ? 'Awaiting Buyer'
+                          : 'Track'}
+                      </Button>
+                    )}
                   </div>
                 </motion.div>
               ))}

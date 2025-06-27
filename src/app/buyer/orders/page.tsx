@@ -5,9 +5,12 @@ import { MapPin, Package, Clock, Truck, CheckCircle, AlertCircle, DollarSign } f
 import { BottomNav } from '@/components/ui/bottom-nav';
 import { Card } from '@/components/ui/card';
 import { useRequireRole } from '@/lib/hooks/useRequireRole';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract } from 'wagmi';
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/constants';
+import { ESCROW_ABI } from '@/lib/contracts';
+import toast from 'react-hot-toast';
+import { keccak256, toBytes } from 'viem';
 
 export default function BuyerOrdersPage() {
   useRequireRole('BUYER');
@@ -16,6 +19,8 @@ export default function BuyerOrdersPage() {
   const [pendingDeals, setPendingDeals] = useState<any[]>([]);
   const [historyDeals, setHistoryDeals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [payingDealId, setPayingDealId] = useState<string | null>(null);
+  const { writeContractAsync } = useWriteContract();
 
   const getStatusInfo = (status: string) => {
     switch (status) {
@@ -78,37 +83,137 @@ export default function BuyerOrdersPage() {
     }
   };
 
-  useEffect(() => {
-    async function load() {
-      if (!address) return;
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/deal?buyer=${address}`);
-        if (!res.ok) {
-          console.error('Failed to fetch deals:', res.statusText);
-          return;
-        }
-        const data = await res.json();
-        setOrders(data);
-        
-        // Separate pending and completed deals
-        const pending = data.filter(
-          (d: any) => d.status !== 'PAID_OUT' && d.status !== 'DISPUTED'
-        );
-        setPendingDeals(pending);
-        
-        const history = data.filter(
-          (d: any) => d.status === 'PAID_OUT' || d.status === 'DISPUTED'
-        );
-        setHistoryDeals(history);
-      } catch (err) {
-        console.error('Failed loading orders', err);
-      } finally {
-        setIsLoading(false);
+  // Refactored load function
+  const load = async () => {
+    if (!address) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/deal?buyer=${address}`);
+      if (!res.ok) {
+        console.error('Failed to fetch deals:', res.statusText);
+        return;
       }
+      const data = await res.json();
+      setOrders(data);
+      // Separate pending and completed deals
+      const pending = data.filter(
+        (d: any) => d.status !== 'PAID_OUT' && d.status !== 'DISPUTED'
+      );
+      setPendingDeals(pending);
+      const history = data.filter(
+        (d: any) => d.status === 'PAID_OUT' || d.status === 'DISPUTED'
+      );
+      setHistoryDeals(history);
+    } catch (err) {
+      console.error('Failed loading orders', err);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
     load();
   }, [address]);
+
+  function toBigIntAmount(amount: string | number, decimals = 18) {
+    return BigInt(Math.round(parseFloat(amount.toString()) * 10 ** decimals));
+  }
+
+  async function handleEscrowPayment(order: any) {
+    if (!order) return;
+    setPayingDealId(order.id);
+    try {
+      const contractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS!;
+      const batchIdBytes32 = keccak256(toBytes(order.batch?.id));
+      const farmer = order.batch?.farmer?.walletAddress;
+      const transporter = order.transporter?.walletAddress;
+      const platform = order.platform?.walletAddress;
+
+      // Debug log
+      console.log('Escrow contract call addresses:', {
+        farmer,
+        transporter,
+        platform,
+        batchId: order.batch?.id,
+        order,
+      });
+
+      // Defensive check
+      if (!farmer || !transporter || !platform) {
+        toast.error(
+          `Missing address: ${
+            !farmer ? 'farmer ' : ''
+          }${!transporter ? 'transporter ' : ''}${!platform ? 'platform' : ''}`
+        );
+        setPayingDealId(null);
+        return;
+      }
+
+      const farmerAmount = toBigIntAmount(order.farmerAmount, 18);
+      const freightAmount = toBigIntAmount(order.freightAmount || 0, 18);
+      const platformFee = toBigIntAmount(order.platformFee || 0, 18);
+      const total = farmerAmount + freightAmount + platformFee;
+
+      const txHash = await writeContractAsync({
+        address: contractAddress,
+        abi: ESCROW_ABI,
+        functionName: 'lock',
+        args: [
+          batchIdBytes32, farmer, transporter, platform,
+          farmerAmount, freightAmount, platformFee, total
+        ],
+      });
+
+      toast.loading('Waiting for escrow transaction confirmation...');
+
+      await fetch(`/api/deal/${order.id}/escrow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ escrowTxHash: txHash }),
+      });
+
+      toast.success('Escrow funded and deal updated!');
+      // Refresh orders to show new status without full reload
+      await load();
+    } catch (err) {
+      console.error(err);
+      toast.error('Payment failed or cancelled');
+    } finally {
+      setPayingDealId(null);
+    }
+  }
+
+  async function handleCompleteDeal(order: any) {
+    if (!order) return;
+    try {
+      const contractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS!;
+      const batchIdBytes32 = keccak256(toBytes(order.batch?.id));
+      // Defensive check
+      if (!address) {
+        toast.error('Missing buyer address');
+        return;
+      }
+      // Call buyerSign on the contract
+      const txHash = await writeContractAsync({
+        address: contractAddress,
+        abi: ESCROW_ABI,
+        functionName: 'buyerSign',
+        args: [batchIdBytes32],
+      });
+      toast.loading('Waiting for transaction confirmation...');
+      // Optionally, update backend with payoutTxHash
+      await fetch(`/api/deal/${order.id}/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payoutTxHash: txHash }),
+      });
+      toast.success('Deal finalized and payout triggered!');
+      await load();
+    } catch (err) {
+      console.error(err);
+      toast.error('Finalization failed or cancelled');
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-warm-white to-lime-lush/5 pb-20">
@@ -248,8 +353,26 @@ export default function BuyerOrdersPage() {
                                 </div>
                               </div>
 
-                              <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+                              <div className="mt-2 p-2 bg-gray-50 rounded-lg flex flex-col gap-2">
                                 <p className="text-xs text-dusk-gray">{statusInfo.description}</p>
+                                {order.status === 'AWAITING_ESCROW' && (
+                                  <button
+                                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                                    disabled={payingDealId === order.id}
+                                    onClick={() => handleEscrowPayment(order)}
+                                  >
+                                    {payingDealId === order.id ? 'Processing...' : 'Pay & Initiate Escrow'}
+                                  </button>
+                                )}
+                                {/* Complete button for READY_TO_FINAL */}
+                                {order.status === 'READY_TO_FINAL' && (
+                                  <button
+                                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded disabled:opacity-50 mt-2"
+                                    onClick={() => handleCompleteDeal(order)}
+                                  >
+                                    Complete
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -353,6 +476,16 @@ export default function BuyerOrdersPage() {
                                   Completed: {new Date(order.updatedAt).toLocaleDateString()}
                                 </div>
                               </div>
+
+                              {/* Complete button for READY_TO_FINAL */}
+                              {order.status === 'READY_TO_FINAL' && (
+                                <button
+                                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded disabled:opacity-50 mt-2"
+                                  onClick={() => handleCompleteDeal(order)}
+                                >
+                                  Complete
+                                </button>
+                              )}
                             </div>
                           </div>
                         </Card>
