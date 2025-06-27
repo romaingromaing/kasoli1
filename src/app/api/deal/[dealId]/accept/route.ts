@@ -3,10 +3,10 @@ import prisma from '@/lib/prisma';
 
 export async function POST(
   request: NextRequest,
-  context: { params: { dealId: string } }
+  { params }: { params: Promise<{ dealId: string }> }
 ) {
   try {
-    const { dealId } = context.params;
+    const { dealId } = await params;
     const body = await request.json();
     const { transporterAddress } = body;
 
