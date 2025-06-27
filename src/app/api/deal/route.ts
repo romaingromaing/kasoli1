@@ -141,6 +141,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Mark the batch as locked once a buyer commits
+    await prisma.batch.update({
+      where: { id: batchId },
+      data: { status: 'LOCKED' },
+    });
+
     return NextResponse.json(deal);
   } catch (error) {
     console.error('Deal creation failed:', error);

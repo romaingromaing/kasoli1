@@ -67,6 +67,12 @@ export async function POST(
       },
     });
 
+    // Assign transporter to the batch as well
+    await prisma.batch.update({
+      where: { id: updatedDeal.batchId },
+      data: { transporterId: transporter.id },
+    });
+
     return NextResponse.json(updatedDeal);
   } catch (error) {
     console.error('Error accepting deal:', error);

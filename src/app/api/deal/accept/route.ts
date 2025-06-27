@@ -37,6 +37,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Attach transporter to the batch record as well
+    await prisma.batch.update({
+      where: { id: deal.batchId },
+      data: { transporterId: transporter.id },
+    });
+
     return NextResponse.json(deal);
   } catch (error) {
     console.error('Driver accept failed:', error);
