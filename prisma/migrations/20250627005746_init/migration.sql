@@ -5,7 +5,7 @@ CREATE TYPE "Role" AS ENUM ('FARMER', 'BUYER', 'TRANSPORTER', 'PLATFORM');
 CREATE TYPE "BatchStatus" AS ENUM ('LISTED', 'LOCKED', 'IN_TRANSIT', 'DELIVERED', 'FINALISED', 'DISPUTED');
 
 -- CreateEnum
-CREATE TYPE "DealStatus" AS ENUM ('PENDING_SIGS', 'READY_TO_FINAL', 'PAID_OUT', 'DISPUTED');
+CREATE TYPE "DealStatus" AS ENUM ('PENDING_DRIVER', 'AWAITING_ESCROW', 'PENDING_SIGS', 'READY_TO_FINAL', 'PAID_OUT', 'DISPUTED');
 
 -- CreateTable
 CREATE TABLE "Farmer" (
@@ -64,9 +64,12 @@ CREATE TABLE "Batch" (
     "metaCid" TEXT NOT NULL,
     "photoCid" TEXT NOT NULL,
     "origin" TEXT,
+    "locationLat" DOUBLE PRECISION,
+    "locationLng" DOUBLE PRECISION,
     "destination" TEXT,
     "grade" TEXT,
     "weightKg" DOUBLE PRECISION NOT NULL,
+    "pricePerKg" DECIMAL(10,2),
     "status" "BatchStatus" NOT NULL DEFAULT 'LISTED',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -81,18 +84,20 @@ CREATE TABLE "Deal" (
     "id" TEXT NOT NULL,
     "batchId" TEXT NOT NULL,
     "farmerAmount" DECIMAL(38,18) NOT NULL,
-    "freightAmount" DECIMAL(38,18) NOT NULL,
-    "platformFee" DECIMAL(38,18) NOT NULL,
-    "totalLocked" DECIMAL(38,18) NOT NULL,
+    "freightAmount" DECIMAL(38,18),
+    "platformFee" DECIMAL(38,18),
+    "totalLocked" DECIMAL(38,18),
     "sigMask" INTEGER NOT NULL,
     "platformAck" BOOLEAN NOT NULL DEFAULT false,
-    "status" "DealStatus" NOT NULL DEFAULT 'PENDING_SIGS',
+    "status" "DealStatus" NOT NULL DEFAULT 'PENDING_DRIVER',
+    "signatureTimeoutHours" INTEGER NOT NULL DEFAULT 24,
+    "timeoutAt" TIMESTAMP(3),
     "escrowTxHash" TEXT,
     "payoutTxHash" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "buyerId" TEXT NOT NULL,
-    "transporterId" TEXT NOT NULL,
+    "transporterId" TEXT,
     "platformId" INTEGER NOT NULL DEFAULT 1,
 
     CONSTRAINT "Deal_pkey" PRIMARY KEY ("id")
@@ -107,6 +112,17 @@ CREATE TABLE "Signature" (
     "signedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Signature_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL,
+    "walletAddress" TEXT NOT NULL,
+    "currentRole" "Role" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -127,6 +143,9 @@ CREATE UNIQUE INDEX "Deal_batchId_key" ON "Deal"("batchId");
 -- CreateIndex
 CREATE UNIQUE INDEX "Signature_dealId_role_key" ON "Signature"("dealId", "role");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "User_walletAddress_key" ON "User"("walletAddress");
+
 -- AddForeignKey
 ALTER TABLE "Batch" ADD CONSTRAINT "Batch_farmerId_fkey" FOREIGN KEY ("farmerId") REFERENCES "Farmer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -140,7 +159,7 @@ ALTER TABLE "Deal" ADD CONSTRAINT "Deal_batchId_fkey" FOREIGN KEY ("batchId") RE
 ALTER TABLE "Deal" ADD CONSTRAINT "Deal_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Deal" ADD CONSTRAINT "Deal_transporterId_fkey" FOREIGN KEY ("transporterId") REFERENCES "Transporter"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Deal" ADD CONSTRAINT "Deal_transporterId_fkey" FOREIGN KEY ("transporterId") REFERENCES "Transporter"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Deal" ADD CONSTRAINT "Deal_platformId_fkey" FOREIGN KEY ("platformId") REFERENCES "Platform"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

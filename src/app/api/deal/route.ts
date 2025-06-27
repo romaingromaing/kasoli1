@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { DealStatus } from '@prisma/client';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const transporterAddr = searchParams.get('transporter');
     const buyerAddr = searchParams.get('buyer');
+    const pending = searchParams.get('pending'); // New parameter for pending driver deals
 
     if (transporterAddr) {
       const transporter = await prisma.transporter.findUnique({
@@ -20,7 +22,32 @@ export async function GET(req: NextRequest) {
       const deals = await prisma.deal.findMany({
         where: { transporterId: transporter.id },
         include: {
-          batch: true,
+          batch: {
+            include: {
+              farmer: true,
+            },
+          },
+          buyer: true,
+          transporter: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      return NextResponse.json(deals);
+    }
+
+    // Get pending driver deals (no transporter assigned yet)
+    if (pending === 'true') {
+      const deals = await prisma.deal.findMany({
+        where: {
+          status: 'PENDING_DRIVER',
+          transporterId: null,
+        },
+        include: {
+          batch: {
+            include: {
+              farmer: true,
+            },
+          },
           buyer: true,
           transporter: true,
         },

@@ -32,8 +32,8 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
     abi: ORACLE_ABI,
     functionName: 'quote',
     args: [
-      BigInt(batch?.weight ? parseFloat(batch.weight.replace(' kg', '')) * 1000 : 0), // kg to grams
-      BigInt(distance && !isNaN(parseFloat(distance)) ? parseFloat(distance) * 1000 : 0), // km to meters
+      BigInt(Math.floor(batch?.weightKg || 0)), // kg as integer
+      BigInt(Math.floor(distance && !isNaN(parseFloat(distance)) ? parseFloat(distance) : 0)), // km as integer
     ],
     query: {
       enabled: !!batch && !!distance && !isNaN(parseFloat(distance)),

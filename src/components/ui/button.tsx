@@ -27,24 +27,30 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       lg: 'px-8 py-4 text-lg w-full h-14',
     };
 
+    const { children, className = '', ...buttonProps } = props;
+
     return (
-      <motion.button
-        ref={ref}
-        className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+      <motion.div
         whileTap={{ scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-        disabled={loading || props.disabled}
-        {...props}
+        className="inline-block"
       >
-        {loading ? (
-          <div className="flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-            Loading...
-          </div>
-        ) : (
-          children
-        )}
-      </motion.button>
+        <button
+          ref={ref}
+          className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+          disabled={loading || buttonProps.disabled}
+          {...buttonProps}
+        >
+          {loading ? (
+            <div className="flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+              Loading...
+            </div>
+          ) : (
+            children
+          )}
+        </button>
+      </motion.div>
     );
   }
 );

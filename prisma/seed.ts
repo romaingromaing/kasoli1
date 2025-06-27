@@ -66,6 +66,8 @@ async function main() {
       metaCid: 'QmMockMetadata123',
       photoCid: 'QmMockPhoto456',
       origin: 'Kampala Warehouse',
+      locationLat: 0.3476,
+      locationLng: 32.5825,
       destination: 'Entebbe Processing',
       grade: 'Grade A',
       weightKg: 2500,
@@ -81,11 +83,36 @@ async function main() {
       metaCid: 'QmMockMetadata456',
       photoCid: 'QmMockPhoto789',
       origin: 'Jinja Silo',
+      locationLat: 0.4196,
+      locationLng: 33.2043,
       destination: 'Port Bell',
       grade: 'Grade B',
       weightKg: 1800,
       pricePerKg: 1.10, // $1.10 per kg
       farmerId: farmer2.id,
+    },
+  });
+
+  // Create some sample deals
+  const deal1 = await prisma.deal.create({
+    data: {
+      batchId: batch1.id,
+      buyerId: buyer1.id,
+      farmerAmount: '3125.00', // $3125 for 2500kg at $1.25/kg
+      sigMask: 0,
+      signatureTimeoutHours: 24,
+      timeoutAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+    },
+  });
+
+  const deal2 = await prisma.deal.create({
+    data: {
+      batchId: batch2.id,
+      buyerId: buyer1.id,
+      farmerAmount: '1980.00', // $1980 for 1800kg at $1.10/kg
+      sigMask: 0,
+      signatureTimeoutHours: 48,
+      timeoutAt: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 hours from now
     },
   });
 
