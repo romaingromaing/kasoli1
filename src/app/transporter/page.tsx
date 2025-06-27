@@ -129,12 +129,18 @@ export default function TransporterDashboard() {
                     <span className={`text-sm px-3 py-1 rounded-full ${
                       delivery.status === 'PENDING_SIGS'
                         ? 'bg-lime-lush/20 text-lime-700'
+                        : delivery.status === 'AWAITING_ESCROW'
+                        ? 'bg-yellow-100 text-yellow-700'
                         : 'bg-aqua-mint/20 text-aqua-mint'
                     }`}>
                       {delivery.status}
                     </span>
                     <Button size="sm" variant="outline">
-                      {delivery.status === 'PENDING_SIGS' ? 'Sign Pickup' : 'Track'}
+                      {delivery.status === 'PENDING_SIGS'
+                        ? 'Sign Pickup'
+                        : delivery.status === 'AWAITING_ESCROW'
+                        ? 'Awaiting Buyer'
+                        : 'Track'}
                     </Button>
                   </div>
                 </motion.div>

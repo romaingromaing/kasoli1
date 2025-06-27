@@ -6,8 +6,8 @@ import { Truck, Calculator, MapPin } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useReadContract, useWriteContract } from 'wagmi';
-import { CONTRACTS, ORACLE_ABI, ESCROW_ABI, ERC20_ABI } from '@/lib/contracts';
+import { useReadContract, useAccount } from 'wagmi';
+import { CONTRACTS, ORACLE_ABI } from '@/lib/contracts';
 import toast from 'react-hot-toast';
 
 interface CommitModalProps {
@@ -25,6 +25,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   const [step, setStep] = useState<'calculate' | 'confirm' | 'processing'>('calculate');
   const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
   const [distanceMethod, setDistanceMethod] = useState<string>('');
+  const { address } = useAccount();
 
   const { data: freightQuote } = useReadContract({
     address: CONTRACTS.ORACLE as `0x${string}`,
@@ -39,7 +40,6 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
     },
   });
 
-  const { writeContract, isPending } = useWriteContract();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -154,50 +154,29 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   };
 
   const handleCommit = async () => {
-    if (!batch) return;
+    if (!batch || !address) return;
 
     setStep('processing');
 
     try {
-      // Mock values for demo
       const totalPrice = calculateTotalPrice(batch);
       const farmerAmount = BigInt(Math.floor(totalPrice * 1e18));
-      const platformFee = farmerAmount * 3n / 100n; // 3%
-      const total = farmerAmount + freightCost + platformFee;
 
-      // First approve USDC spending
-      writeContract({
-        address: CONTRACTS.USDC as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [CONTRACTS.ESCROW as `0x${string}`, total],
+      await fetch('/api/deal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batchId: batch.id,
+          buyerAddress: address,
+          farmerAmount: farmerAmount.toString(),
+        }),
       });
 
-      // Then lock funds in escrow
-      setTimeout(() => {
-        writeContract({
-          address: CONTRACTS.ESCROW as `0x${string}`,
-          abi: ESCROW_ABI,
-          functionName: 'lock',
-          args: [
-            `0x${batch.id.padStart(64, '0')}` as `0x${string}`, // batch ID as bytes32
-            '0x1234567890123456789012345678901234567890' as `0x${string}`, // farmer
-            '0x2345678901234567890123456789012345678901' as `0x${string}`, // transporter
-            '0x3456789012345678901234567890123456789012' as `0x${string}`, // platform
-            farmerAmount,
-            freightCost,
-            platformFee,
-            total,
-          ],
-        });
-
-        toast.success('Deal committed successfully!');
-        onClose();
-      }, 2000);
-
+      toast.success('Deal stored, awaiting transporter');
+      onClose();
     } catch (error) {
       console.error('Error committing deal:', error);
-      toast.error('Failed to commit deal');
+      toast.error('Failed to store deal');
       setStep('confirm');
     }
   };
@@ -376,7 +355,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
             <Button variant="outline" onClick={() => setStep('calculate')} className="flex-1">
               Back
             </Button>
-            <Button onClick={handleCommit} loading={isPending} className="flex-1">
+            <Button onClick={handleCommit} className="flex-1">
               Commit & Pay
             </Button>
           </div>

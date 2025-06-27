@@ -61,49 +61,28 @@ export async function POST(req: NextRequest) {
     const {
       batchId,
       buyerAddress,
-      transporterAddress,
       farmerAmount,
-      freightAmount,
-      platformFee,
-      totalLocked,
       signatureTimeoutHours = 24,
     } = body;
 
-    // Convert addresses to lowercase
     const buyerWallet = buyerAddress.toLowerCase();
-    const transporterWallet = transporterAddress.toLowerCase();
 
-    // Find buyer and transporter
-    const [buyer, transporter] = await Promise.all([
-      prisma.buyer.findUnique({ where: { walletAddress: buyerWallet } }),
-      prisma.transporter.findUnique({ where: { walletAddress: transporterWallet } }),
-    ]);
-
+    const buyer = await prisma.buyer.findUnique({ where: { walletAddress: buyerWallet } });
     if (!buyer) {
       return NextResponse.json({ error: 'Buyer not found' }, { status: 400 });
     }
 
-    if (!transporter) {
-      return NextResponse.json({ error: 'Transporter not found' }, { status: 400 });
-    }
-
-    // Calculate timeout date
     const timeoutAt = new Date();
     timeoutAt.setHours(timeoutAt.getHours() + signatureTimeoutHours);
 
-    // Create deal
     const deal = await prisma.deal.create({
       data: {
         batchId,
         buyerId: buyer.id,
-        transporterId: transporter.id,
         farmerAmount,
-        freightAmount,
-        platformFee,
-        totalLocked,
         signatureTimeoutHours,
         timeoutAt,
-        sigMask: 0, // No signatures yet
+        sigMask: 0,
       },
       include: {
         batch: true,
