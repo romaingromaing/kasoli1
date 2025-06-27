@@ -89,6 +89,10 @@ export async function POST(req: NextRequest) {
       batchId,
       buyerAddress,
       farmerAmount,
+      origin,
+      destination,
+      distanceKm,
+      weightKg,
       signatureTimeoutHours = 24,
     } = body;
 
@@ -102,10 +106,20 @@ export async function POST(req: NextRequest) {
     const timeoutAt = new Date();
     timeoutAt.setHours(timeoutAt.getHours() + signatureTimeoutHours);
 
+    const batch = await prisma.batch.findUnique({ where: { id: batchId } });
+    if (!batch) {
+      return NextResponse.json({ error: 'Batch not found' }, { status: 400 });
+    }
+
     const deal = await prisma.deal.create({
       data: {
         batchId,
         buyerId: buyer.id,
+        farmerId: batch?.farmerId ?? '',
+        origin: origin ?? batch?.origin ?? null,
+        destination: destination ?? batch?.destination ?? null,
+        distanceKm: distanceKm ?? null,
+        weightKg: weightKg ?? batch?.weightKg ?? null,
         farmerAmount,
         signatureTimeoutHours,
         timeoutAt,

@@ -117,6 +117,13 @@ model Deal {
   batchId         String      @unique
   batch           Batch       @relation(fields: [batchId], references: [id])
 
+  origin          String?
+  destination     String?
+  distanceKm      Float?
+  weightKg        Float?
+  farmerId        String
+  farmer          Farmer      @relation(fields: [farmerId], references: [id])
+
   farmerAmount    Decimal @db.Decimal(38, 18)
   freightAmount   Decimal? @db.Decimal(38, 18)
   platformFee     Decimal? @db.Decimal(38, 18)
