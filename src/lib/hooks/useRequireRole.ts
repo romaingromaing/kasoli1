@@ -1,24 +1,21 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Role, useRole } from './useRole';
 
 export function useRequireRole(required: Role) {
   const { role, loading } = useRole();
   const router = useRouter();
-  const [hasCheckedRole, setHasCheckedRole] = useState(false);
-
   useEffect(() => {
-    if (!loading && !hasCheckedRole) {
-      setHasCheckedRole(true);
-      // Only redirect if user has no role at all (not registered)
-      // Allow users with different roles to access pages (they can switch roles)
+    if (!loading) {
       if (role === null) {
         router.push('/');
+      } else if (role !== required) {
+        router.push(`/${role.toLowerCase()}`);
       }
     }
-  }, [role, loading, hasCheckedRole, router]);
+  }, [role, loading, required, router]);
 
   return { role, loading, requiredRole: required };
 }

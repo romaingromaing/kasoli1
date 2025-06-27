@@ -4,6 +4,7 @@ import { BottomNav } from '@/components/ui/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { useRequireRole } from '@/lib/hooks/useRequireRole';
 import { useAccount, useDisconnect } from 'wagmi';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function BuyerProfilePage() {
@@ -22,6 +23,11 @@ export default function BuyerProfilePage() {
       <div className="container mx-auto px-4 py-8 space-y-4">
         <h1 className="text-3xl font-bold text-ocean-navy">Profile</h1>
         <p className="text-dusk-gray break-all">Address: {address}</p>
+        {address && address.toLowerCase() === (process.env.NEXT_PUBLIC_PLATFORM_ADDRESS || '').toLowerCase() && (
+          <Link href="/platform" className="text-teal-deep underline">
+            Platform Dashboard
+          </Link>
+        )}
         <Button variant="outline" onClick={handleLogout}>Logout</Button>
       </div>
       <BottomNav />

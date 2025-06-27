@@ -6,6 +6,7 @@ import { useAccount } from 'wagmi';
 import { useRole, Role } from '@/lib/hooks/useRole';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Input } from '@/components/ui/input';
 import { Wheat, Shield, Truck, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -13,23 +14,30 @@ export default function Home() {
   const { address, isConnected } = useAccount();
   const { role, loading } = useRole();
   const [selectedRole, setSelectedRole] = useState<Role>('FARMER');
+  const [profile, setProfile] = useState({
+    name: '',
+    phone: '',
+    organisation: '',
+    contactName: '',
+    vehicleReg: '',
+  });
   const router = useRouter();
 
   useEffect(() => {
-    async function register() {
-      if (isConnected && address && selectedRole && !role && !loading) {
-        await fetch('/api/user/connect', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address, role: selectedRole }),
-        });
-        router.push(`/${selectedRole.toLowerCase()}`);
-      } else if (isConnected && role && !loading) {
-        router.push(`/${role.toLowerCase()}`);
-      }
+    if (isConnected && role && !loading) {
+      router.push(`/${role.toLowerCase()}`);
     }
-    register();
-  }, [isConnected, address, role, loading, selectedRole, router]);
+  }, [isConnected, role, loading, router]);
+
+  const handleRegister = async () => {
+    if (!address) return;
+    await fetch('/api/user/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, role: selectedRole, profile }),
+    });
+    router.push(`/${selectedRole.toLowerCase()}`);
+  };
 
   const features = [
     {
@@ -211,6 +219,65 @@ export default function Home() {
                 );
               }}
             </ConnectButton.Custom>
+            {isConnected && !role && (
+              <div className="mt-6 space-y-3 max-w-sm mx-auto text-left">
+                {selectedRole === 'FARMER' && (
+                  <>
+                    <Input
+                      label="Name"
+                      value={profile.name}
+                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    />
+                    <Input
+                      label="Phone"
+                      value={profile.phone}
+                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                    />
+                  </>
+                )}
+                {selectedRole === 'BUYER' && (
+                  <>
+                    <Input
+                      label="Organisation"
+                      value={profile.organisation}
+                      onChange={(e) => setProfile({ ...profile, organisation: e.target.value })}
+                    />
+                    <Input
+                      label="Contact Name"
+                      value={profile.contactName}
+                      onChange={(e) => setProfile({ ...profile, contactName: e.target.value })}
+                    />
+                    <Input
+                      label="Phone"
+                      value={profile.phone}
+                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                    />
+                  </>
+                )}
+                {selectedRole === 'TRANSPORTER' && (
+                  <>
+                    <Input
+                      label="Name"
+                      value={profile.name}
+                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    />
+                    <Input
+                      label="Vehicle Reg"
+                      value={profile.vehicleReg}
+                      onChange={(e) => setProfile({ ...profile, vehicleReg: e.target.value })}
+                    />
+                    <Input
+                      label="Phone"
+                      value={profile.phone}
+                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                    />
+                  </>
+                )}
+                <Button onClick={handleRegister} size="lg" className="w-full">
+                  Complete Sign Up
+                </Button>
+              </div>
+            )}
           </motion.div>
         </motion.div>
 
