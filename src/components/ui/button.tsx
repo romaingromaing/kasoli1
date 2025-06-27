@@ -27,8 +27,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       lg: 'px-8 py-4 text-lg w-full h-14',
     };
 
-    const { children, className = '', ...buttonProps } = props;
-
     return (
       <motion.div
         whileTap={{ scale: 0.98 }}
@@ -38,8 +36,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         <button
           ref={ref}
           className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
-          disabled={loading || buttonProps.disabled}
-          {...buttonProps}
+          disabled={loading || props.disabled}
+          {...props}
         >
           {loading ? (
             <div className="flex items-center justify-center">
