@@ -98,6 +98,15 @@ async function main() {
     data: {
       batchId: batch1.id,
       buyerId: buyer1.id,
+      farmerId: farmer1.id,
+      origin: batch1.origin,
+      originLat: batch1.locationLat,
+      originLng: batch1.locationLng,
+      destination: batch1.destination,
+      destinationLat: 0.35,
+      destinationLng: 32.60,
+      distanceKm: 50,
+      weightKg: batch1.weightKg,
       farmerAmount: '3125.00', // $3125 for 2500kg at $1.25/kg
       sigMask: 0,
       signatureTimeoutHours: 24,
@@ -109,6 +118,15 @@ async function main() {
     data: {
       batchId: batch2.id,
       buyerId: buyer1.id,
+      farmerId: farmer2.id,
+      origin: batch2.origin,
+      originLat: batch2.locationLat,
+      originLng: batch2.locationLng,
+      destination: batch2.destination,
+      destinationLat: 0.41,
+      destinationLng: 33.25,
+      distanceKm: 80,
+      weightKg: batch2.weightKg,
       farmerAmount: '1980.00', // $1980 for 1800kg at $1.10/kg
       sigMask: 0,
       signatureTimeoutHours: 48,

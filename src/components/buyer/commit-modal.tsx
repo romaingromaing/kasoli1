@@ -169,6 +169,14 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
           batchId: batch.id,
           buyerAddress: address,
           farmerAmount: farmerAmount.toString(),
+          originLat: batch.locationLat,
+          originLng: batch.locationLng,
+          origin: batch.origin,
+          destination: locationInput,
+          destinationLat: coords?.lat ?? null,
+          destinationLng: coords?.lng ?? null,
+          distanceKm: distance ? parseFloat(distance) : null,
+          weightKg: batch.weightKg,
         }),
       });
 
