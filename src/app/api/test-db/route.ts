@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function GET() {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
   try {
     // Test database connection
     const batchCount = await prisma.batch.count();

@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ['@prisma/client'],
+  // Ensure API routes are not statically generated
+  async headers() {
+    return [];
+  },
 };
 
 export default nextConfig;
