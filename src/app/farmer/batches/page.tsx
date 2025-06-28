@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract } from 'wagmi';
 import { motion } from 'framer-motion';
 import { MapPin, Package, CheckCircle, XCircle, User, Truck, ShoppingCart } from 'lucide-react';
 import { BottomNav } from '@/components/ui/bottom-nav';
@@ -9,11 +9,15 @@ import { Card } from '@/components/ui/card';
 import { useRequireRole } from '@/lib/hooks/useRequireRole';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
+import { keccak256, toBytes } from 'viem';
+import { CONTRACTS, ESCROW_ABI } from '@/lib/contracts';
 
 export default function FarmerBatchesPage() {
   useRequireRole('FARMER');
   const { address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
   const [batches, setBatches] = useState<any[]>([]);
+  const [signingBatchId, setSigningBatchId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -35,15 +39,64 @@ export default function FarmerBatchesPage() {
       toast.error('No deal associated with this batch');
       return;
     }
+    
+    if (!address) {
+      toast.error('Wallet not connected');
+      return;
+    }
+    
+    setSigningBatchId(batch.id);
     try {
-      const res = await fetch(`/api/deal/${batch.deal.id}/farmer-sign`, {
-        method: 'POST',
+      // First, call the smart contract
+      const contractAddress = CONTRACTS.ESCROW as `0x${string}`;
+      const batchIdBytes32 = keccak256(toBytes(batch.id));
+      
+      console.log('Calling farmer sign smart contract with:', {
+        contractAddress,
+        batchIdBytes32,
+        batchId: batch.id,
+        dealId: batch.deal.id,
       });
-      if (!res.ok) {
-        toast.error('Failed to sign batch');
+
+      // Validate contract address
+      if (!contractAddress || contractAddress === '0x0000000000000000000000000000000000000000') {
+        throw new Error('Invalid contract address');
+      }
+
+      // Check if the deal has been funded in the contract
+      if (!batch.deal.escrowTxHash) {
+        toast.error('Deal has not been funded in escrow yet');
         return;
       }
-      toast.success('Batch signed!');
+
+      const txHash = await writeContractAsync({
+        address: contractAddress,
+        abi: ESCROW_ABI,
+        functionName: 'farmerSign',
+        args: [batchIdBytes32],
+      });
+
+      console.log('Farmer sign smart contract transaction hash:', txHash);
+      toast.loading('Waiting for transaction confirmation...');
+
+      // Then update the backend
+      const res = await fetch(`/api/deal/${batch.deal.id}/farmer-sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          farmerAddress: address,
+          txHash: txHash,
+        }),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        toast.error(`Failed to sign batch: ${errorData.error || 'Unknown error'}`);
+        return;
+      }
+      
+      toast.success('Batch signed successfully!');
+      
       // Refresh batches
       if (address) {
         const res = await fetch(`/api/batch?farmer=${address}`);
@@ -52,8 +105,26 @@ export default function FarmerBatchesPage() {
           setBatches(data);
         }
       }
-    } catch (err) {
-      toast.error('Failed to sign batch');
+    } catch (err: any) {
+      console.error('Error in handleFarmerSign:', err);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to sign batch';
+      if (err.message?.includes('User rejected')) {
+        errorMessage = 'Transaction was cancelled';
+      } else if (err.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds for gas';
+      } else if (err.message?.includes('Invalid contract address')) {
+        errorMessage = 'Contract configuration error';
+      } else if (err.message?.includes('execution reverted')) {
+        errorMessage = 'Contract execution failed - check deal status';
+      } else if (err.message?.includes('Deal has not been funded')) {
+        errorMessage = 'Deal has not been funded in escrow yet';
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setSigningBatchId(null);
     }
   }
 
@@ -130,8 +201,13 @@ export default function FarmerBatchesPage() {
                     </div>
                     {/* Show sign button if batch has a deal, is LOCKED, and farmer has not signed */}
                     {batch.deal && batch.status === 'LOCKED' && !(batch.deal.sigMask & 0x2) && (
-                      <Button size="sm" className="mt-2" onClick={() => handleFarmerSign(batch)}>
-                        Sign Batch
+                      <Button 
+                        size="sm" 
+                        className="mt-2" 
+                        disabled={signingBatchId === batch.id}
+                        onClick={() => handleFarmerSign(batch)}
+                      >
+                        {signingBatchId === batch.id ? 'Signing...' : 'Sign Batch'}
                       </Button>
                     )}
                   </div>

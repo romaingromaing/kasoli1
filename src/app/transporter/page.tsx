@@ -6,15 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BottomNav } from '@/components/ui/bottom-nav';
 import { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract } from 'wagmi';
 import { QRScanModal } from '@/components/transporter/qr-scan-modal';
 import { useRequireRole } from '@/lib/hooks/useRequireRole';
 import { formatCurrency } from '@/lib/constants';
 import toast from 'react-hot-toast';
+import { keccak256, toBytes } from 'viem';
+import { CONTRACTS, ESCROW_ABI } from '@/lib/contracts';
 
 export default function TransporterDashboard() {
   useRequireRole('TRANSPORTER');
   const { address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
   const [showScanModal, setShowScanModal] = useState(false);
   const [activeDeliveries, setActiveDeliveries] = useState<any[]>([]);
   const [pendingDeals, setPendingDeals] = useState<any[]>([]);
@@ -24,6 +27,7 @@ export default function TransporterDashboard() {
     icon: any;
     color: string;
   }[]>([]);
+  const [signingDealId, setSigningDealId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -77,20 +81,60 @@ export default function TransporterDashboard() {
 
   // Add handler for transporter sign
   const handleTransporterSign = async (delivery: any) => {
+    if (!delivery || !address) return;
+    
+    setSigningDealId(delivery.id);
     try {
+      // First, call the smart contract
+      const contractAddress = CONTRACTS.ESCROW as `0x${string}`;
+      const batchIdBytes32 = keccak256(toBytes(delivery.batch?.id));
+      
+      console.log('Calling smart contract with:', {
+        contractAddress,
+        batchIdBytes32,
+        batchId: delivery.batch?.id,
+        delivery,
+      });
+
+      // Validate contract address
+      if (!contractAddress || contractAddress === '0x0000000000000000000000000000000000000000') {
+        throw new Error('Invalid contract address');
+      }
+
+      // Check if the deal has been funded in the contract
+      if (!delivery.escrowTxHash) {
+        toast.error('Deal has not been funded in escrow yet');
+        return;
+      }
+
+      const txHash = await writeContractAsync({
+        address: contractAddress,
+        abi: ESCROW_ABI,
+        functionName: 'transporterSign',
+        args: [batchIdBytes32],
+      });
+
+      console.log('Smart contract transaction hash:', txHash);
+      toast.loading('Waiting for transaction confirmation...');
+
+      // Then update the backend
       const res = await fetch(`/api/deal/${delivery.id}/transporter-sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transporterAddress: address,
+          txHash: txHash,
         }),
       });
+      
       const data = await res.json();
       if (!res.ok) {
-        toast.error('Failed to sign pickup');
+        toast.error(`Failed to sign pickup: ${data.error || 'Unknown error'}`);
         return;
       }
-      toast.success('Pickup signed!');
+      
+      toast.success('Pickup signed successfully!');
+      
       // Refresh deliveries
       if (address) {
         const assignedRes = await fetch(`/api/deal?transporter=${address}`);
@@ -99,9 +143,26 @@ export default function TransporterDashboard() {
           setActiveDeliveries(assignedDeals);
         }
       }
-    } catch (err) {
-      toast.error('Failed to sign pickup');
+    } catch (err: any) {
       console.error('Error in handleTransporterSign:', err);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to sign pickup';
+      if (err.message?.includes('User rejected')) {
+        errorMessage = 'Transaction was cancelled';
+      } else if (err.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds for gas';
+      } else if (err.message?.includes('Invalid contract address')) {
+        errorMessage = 'Contract configuration error';
+      } else if (err.message?.includes('execution reverted')) {
+        errorMessage = 'Contract execution failed - check deal status';
+      } else if (err.message?.includes('Deal has not been funded')) {
+        errorMessage = 'Deal has not been funded in escrow yet';
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setSigningDealId(null);
     }
   };
 
@@ -278,8 +339,13 @@ export default function TransporterDashboard() {
                       {delivery.status}
                     </span>
                     {(delivery.status === 'PENDING_SIGS' && (delivery.sigMask & 0x2) && !(delivery.sigMask & 0x4)) ? (
-                      <Button size="sm" variant="outline" onClick={() => handleTransporterSign(delivery)}>
-                        Sign Pickup
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        disabled={signingDealId === delivery.id}
+                        onClick={() => handleTransporterSign(delivery)}
+                      >
+                        {signingDealId === delivery.id ? 'Signing...' : 'Sign Pickup'}
                       </Button>
                     ) : (
                       <Button size="sm" variant="outline" disabled>
