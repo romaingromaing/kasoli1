@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Package, Clock, Truck, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
 import { BottomNav } from '@/components/ui/bottom-nav';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useRequireRole } from '@/lib/hooks/useRequireRole';
 import { useAccount, useWriteContract } from 'wagmi';
 import { useEffect, useState } from 'react';
@@ -11,6 +12,7 @@ import { formatCurrency } from '@/lib/constants';
 import { ESCROW_ABI } from '@/lib/contracts';
 import toast from 'react-hot-toast';
 import { keccak256, toBytes } from 'viem';
+import { FundEscrowModal } from '@/components/buyer/fund-escrow-modal';
 
 export default function BuyerOrdersPage() {
   useRequireRole('BUYER');
@@ -19,7 +21,8 @@ export default function BuyerOrdersPage() {
   const [pendingDeals, setPendingDeals] = useState<any[]>([]);
   const [historyDeals, setHistoryDeals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [payingDealId, setPayingDealId] = useState<string | null>(null);
+  const [selectedDeal, setSelectedDeal] = useState<any>(null);
+  const [showFundModal, setShowFundModal] = useState(false);
   const { writeContractAsync } = useWriteContract();
 
   const getStatusInfo = (status: string) => {
@@ -115,77 +118,17 @@ export default function BuyerOrdersPage() {
     load();
   }, [address]);
 
-  function toBigIntAmount(amount: string | number, decimals = 18) {
-    return BigInt(Math.round(parseFloat(amount.toString()) * 10 ** decimals));
-  }
+  const handleFundEscrow = (deal: any) => {
+    setSelectedDeal(deal);
+    setShowFundModal(true);
+  };
 
-  async function handleEscrowPayment(order: any) {
-    if (!order) return;
-    setPayingDealId(order.id);
-    try {
-      const contractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS! as `0x${string}`;
-      const batchIdBytes32 = keccak256(toBytes(order.batch?.id));
-      const farmer = order.batch?.farmer?.walletAddress;
-      const transporter = order.transporter?.walletAddress;
-      const platform = order.platform?.walletAddress;
-
-      // Debug log
-      console.log('Escrow contract call addresses:', {
-        farmer,
-        transporter,
-        platform,
-        batchId: order.batch?.id,
-        order,
-      });
-
-      // Defensive check
-      if (!farmer || !transporter || !platform) {
-        toast.error(
-          `Missing address: ${
-            !farmer ? 'farmer ' : ''
-          }${!transporter ? 'transporter ' : ''}${!platform ? 'platform' : ''}`
-        );
-        setPayingDealId(null);
-        return;
-      }
-
-      const farmerAmount = toBigIntAmount(order.farmerAmount, 18);
-      const freightAmount = toBigIntAmount(order.freightAmount || 0, 18);
-      const platformFee = toBigIntAmount(order.platformFee || 0, 18);
-      const total = farmerAmount + freightAmount + platformFee;
-
-      const txHash = await writeContractAsync({
-        address: contractAddress,
-        abi: ESCROW_ABI,
-        functionName: 'lock',
-        args: [
-          batchIdBytes32, farmer, transporter, platform,
-          farmerAmount, freightAmount, platformFee, total
-        ],
-      });
-
-      toast.loading('Waiting for escrow transaction confirmation...');
-
-      await fetch(`/api/deal/${order.id}/escrow`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ escrowTxHash: txHash }),
-      });
-
-      toast.success('Escrow funded and deal updated!');
-      // Refresh orders to show new status without full reload
-      await load();
-      // Add a small delay then refresh the page for complete UI update
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    } catch (err) {
-      console.error(err);
-      toast.error('Payment failed or cancelled');
-    } finally {
-      setPayingDealId(null);
-    }
-  }
+  const handleFundModalClose = () => {
+    setShowFundModal(false);
+    setSelectedDeal(null);
+    // Refresh the data after funding
+    load();
+  };
 
   async function handleCompleteDeal(order: any) {
     if (!order) return;
@@ -366,10 +309,9 @@ export default function BuyerOrdersPage() {
                                 {order.status === 'AWAITING_ESCROW' && (
                                   <button
                                     className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded disabled:opacity-50"
-                                    disabled={payingDealId === order.id}
-                                    onClick={() => handleEscrowPayment(order)}
+                                    onClick={() => handleFundEscrow(order)}
                                   >
-                                    {payingDealId === order.id ? 'Processing...' : 'Pay & Initiate Escrow'}
+                                    Pay & Initiate Escrow
                                   </button>
                                 )}
                                 {/* Complete button for READY_TO_FINAL */}
@@ -507,6 +449,13 @@ export default function BuyerOrdersPage() {
         </motion.div>
       </div>
       <BottomNav />
+      {showFundModal && selectedDeal && (
+        <FundEscrowModal
+          isOpen={showFundModal}
+          deal={selectedDeal}
+          onClose={handleFundModalClose}
+        />
+      )}
     </div>
   );
 }

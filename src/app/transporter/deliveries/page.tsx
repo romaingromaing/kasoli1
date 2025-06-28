@@ -67,32 +67,7 @@ export default function TransporterDeliveriesPage() {
         return;
       }
 
-      // First, try to update transporter address if it's not set
-      try {
-        toast.loading('Checking transporter assignment...', { id: 'check-transporter' });
-        
-        const updateTxHash = await writeContractAsync({
-          address: contractAddress,
-          abi: ESCROW_ABI,
-          functionName: 'updateTransporter',
-          args: [batchIdBytes32, address as `0x${string}`],
-        });
-
-        console.log('Update transporter transaction hash:', updateTxHash);
-        toast.dismiss('check-transporter');
-        toast.loading('Waiting for transporter update confirmation...', { id: 'update-confirm' });
-
-        // Wait a bit for transaction to be confirmed
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        toast.dismiss('update-confirm');
-      } catch (updateError: any) {
-        // If update fails, it might mean transporter is already set or other conditions not met
-        // This is expected if transporter is already set correctly
-        console.log('Transporter update not needed or failed:', updateError.message);
-        toast.dismiss('check-transporter');
-      }
-
-      // Now try to sign
+      // Sign the pickup
       toast.loading('Signing pickup...', { id: 'sign-pickup' });
 
       const txHash = await writeContractAsync({
