@@ -6,9 +6,10 @@ import { Truck, Calculator, MapPin } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useReadContract, useAccount } from 'wagmi';
-import { CONTRACTS, ORACLE_ABI } from '@/lib/contracts';
+import { useReadContract, useAccount, useWriteContract } from 'wagmi';
+import { CONTRACTS, ORACLE_ABI, ESCROW_ABI, ERC20_ABI } from '@/lib/contracts';
 import { PLATFORM_CONFIG, calculatePlatformFee, convertUGXToUSD, formatCurrency } from '@/lib/constants';
+import { keccak256, toBytes } from 'viem';
 import toast from 'react-hot-toast';
 
 interface CommitModalProps {
@@ -27,6 +28,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
   const [distanceMethod, setDistanceMethod] = useState<string>('');
   const { address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
 
   const { data: freightQuote } = useReadContract({
     address: CONTRACTS.ORACLE as `0x${string}`,
@@ -164,8 +166,75 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
       const platformFee = calculatePlatformFee(totalPrice);
       const farmerAmount = totalPrice; // Store as regular USD amount, not Wei
       const freightAmountUSD = freightCost ? convertUGXToUSD(Number(freightCost)) : 0;
+      const totalAmount = farmerAmount + freightAmountUSD + platformFee;
 
-      await fetch('/api/deal', {
+      // Convert USD amounts to USDC (6 decimals)
+      const farmerAmountUSDC = BigInt(Math.floor(farmerAmount * 1000000));
+      const freightAmountUSDC = BigInt(Math.floor(freightAmountUSD * 1000000));
+      const platformFeeUSDC = BigInt(Math.floor(platformFee * 1000000));
+      const totalAmountUSDC = BigInt(Math.floor(totalAmount * 1000000));
+
+      // Generate batch ID for the escrow
+      const batchIdBytes32 = keccak256(toBytes(batch.id));
+
+      console.log('Initiating escrow with:', {
+        batchId: batch.id,
+        batchIdBytes32,
+        farmerAmountUSDC: farmerAmountUSDC.toString(),
+        freightAmountUSDC: freightAmountUSDC.toString(),
+        platformFeeUSDC: platformFeeUSDC.toString(),
+        totalAmountUSDC: totalAmountUSDC.toString(),
+        farmerAddress: batch.farmer?.walletAddress,
+        platformAddress: CONTRACTS.PLATFORM,
+      });
+
+      // Step 1: Approve USDC spending for escrow contract
+      toast.loading('Approving USDC spending...', { id: 'approval' });
+      
+      const approvalTxHash = await writeContractAsync({
+        address: CONTRACTS.USDC as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [CONTRACTS.ESCROW as `0x${string}`, totalAmountUSDC],
+      });
+
+      console.log('USDC approval transaction:', approvalTxHash);
+      toast.dismiss('approval');
+      toast.loading('Waiting for approval confirmation...', { id: 'approval-confirm' });
+
+      // Wait a bit for approval to be confirmed
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      toast.dismiss('approval-confirm');
+
+      // Step 2: Lock funds in escrow contract
+      toast.loading('Locking funds in escrow...', { id: 'lock' });
+
+      const lockTxHash = await writeContractAsync({
+        address: CONTRACTS.ESCROW as `0x${string}`,
+        abi: ESCROW_ABI,
+        functionName: 'lock',
+        args: [
+          batchIdBytes32,
+          batch.farmer?.walletAddress as `0x${string}`,
+          '0x0000000000000000000000000000000000000000', // transporter (will be set later)
+          CONTRACTS.PLATFORM as `0x${string}`,
+          farmerAmountUSDC,
+          freightAmountUSDC,
+          platformFeeUSDC,
+          totalAmountUSDC,
+        ],
+      });
+
+      console.log('Escrow lock transaction:', lockTxHash);
+      toast.dismiss('lock');
+      toast.loading('Waiting for escrow confirmation...', { id: 'lock-confirm' });
+
+      // Wait a bit for lock to be confirmed
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      toast.dismiss('lock-confirm');
+
+      // Step 3: Store deal in backend with transaction hash
+      const dealResponse = await fetch('/api/deal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -185,11 +254,45 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
         }),
       });
 
-      toast.success('Deal stored, awaiting transporter');
+      if (!dealResponse.ok) {
+        throw new Error('Failed to store deal in backend');
+      }
+
+      const deal = await dealResponse.json();
+
+      // Step 4: Update deal with escrow transaction hash
+      const escrowResponse = await fetch(`/api/deal/${deal.id}/escrow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          escrowTxHash: lockTxHash,
+        }),
+      });
+
+      if (!escrowResponse.ok) {
+        throw new Error('Failed to update deal with escrow hash');
+      }
+
+      toast.success('Deal committed and funds locked in escrow!');
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error committing deal:', error);
-      toast.error('Failed to store deal');
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to commit deal';
+      if (error.message?.includes('User rejected')) {
+        errorMessage = 'Transaction was cancelled';
+      } else if (error.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient USDC balance';
+      } else if (error.message?.includes('execution reverted')) {
+        errorMessage = 'Contract execution failed - check your balance and allowances';
+      } else if (error.message?.includes('Failed to store deal')) {
+        errorMessage = 'Failed to store deal in database';
+      } else if (error.message?.includes('Failed to update deal')) {
+        errorMessage = 'Failed to update deal with transaction hash';
+      }
+      
+      toast.error(errorMessage);
       setStep('confirm');
     }
   };
