@@ -15,6 +15,8 @@ export default function Home() {
   const { role, loading } = useRole();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [profile, setProfile] = useState({
     name: '',
     phone: '',
@@ -34,11 +36,13 @@ export default function Home() {
   const handleRoleSelect = (role: Role) => {
     setSelectedRole(role);
     setShowRegistrationForm(true);
+    setErrors({});
   };
 
   const handleBackToRoleSelection = () => {
     setShowRegistrationForm(false);
     setSelectedRole(null);
+    setErrors({});
     setProfile({
       name: '',
       phone: '',
@@ -49,28 +53,84 @@ export default function Home() {
     });
   };
 
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+
+    // Email validation for all user types
+    if (!profile.email || !profile.email.trim()) {
+      newErrors.email = 'Email address is required';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(profile.email)) {
+        newErrors.email = 'Please enter a valid email address';
+      }
+    }
+
+    // Role-specific validation
+    if (selectedRole === 'BUYER') {
+      if (!profile.organisation || !profile.organisation.trim()) {
+        newErrors.organisation = 'Organisation name is required';
+      }
+      if (!profile.contactName || !profile.contactName.trim()) {
+        newErrors.contactName = 'Contact name is required';
+      }
+    } else if (selectedRole === 'FARMER') {
+      if (!profile.name || !profile.name.trim()) {
+        newErrors.name = 'Name is required';
+      }
+    } else if (selectedRole === 'TRANSPORTER') {
+      if (!profile.name || !profile.name.trim()) {
+        newErrors.name = 'Name is required';
+      }
+      if (!profile.vehicleReg || !profile.vehicleReg.trim()) {
+        newErrors.vehicleReg = 'Vehicle registration is required';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleRegister = async () => {
     if (!address || !selectedRole) return;
     
-    // Validate email is provided for all user types
-    if (!profile.email || !profile.email.trim()) {
-      alert('Email address is required for all user types');
+    // Clear previous errors
+    setErrors({});
+    
+    // Validate form
+    if (!validateForm()) {
       return;
     }
+
+    setIsSubmitting(true);
     
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(profile.email)) {
-      alert('Please enter a valid email address');
-      return;
+    try {
+      const response = await fetch('/api/user/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, role: selectedRole, profile }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle API errors
+        if (data.error) {
+          setErrors({ general: data.error });
+        } else {
+          setErrors({ general: 'Registration failed. Please try again.' });
+        }
+        return;
+      }
+
+      // Success - redirect to dashboard
+      router.push(`/${selectedRole.toLowerCase()}`);
+    } catch (error) {
+      console.error('Registration error:', error);
+      setErrors({ general: 'Network error. Please check your connection and try again.' });
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    await fetch('/api/user/connect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, role: selectedRole, profile }),
-    });
-    router.push(`/${selectedRole.toLowerCase()}`);
   };
 
   const features = [
@@ -293,6 +353,13 @@ export default function Home() {
                 </div>
                 
                 <div className="bg-warm-white rounded-xl p-8 shadow-sm border border-dusk-gray/10 space-y-6">
+                  {/* General error message */}
+                  {errors.general && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-red-600 text-sm">{errors.general}</p>
+                    </div>
+                  )}
+
                   {selectedRole === 'FARMER' && (
                     <>
                       <Input
@@ -300,6 +367,8 @@ export default function Home() {
                         value={profile.name}
                         onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                         placeholder="Enter your full name"
+                        required
+                        error={errors.name}
                       />
                       <Input
                         label="Email"
@@ -308,6 +377,7 @@ export default function Home() {
                         onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                         required
                         placeholder="Enter your email address"
+                        error={errors.email}
                       />
                       <Input
                         label="Phone"
@@ -324,12 +394,16 @@ export default function Home() {
                         value={profile.organisation}
                         onChange={(e) => setProfile({ ...profile, organisation: e.target.value })}
                         placeholder="Enter your organisation name"
+                        required
+                        error={errors.organisation}
                       />
                       <Input
                         label="Contact Name"
                         value={profile.contactName}
                         onChange={(e) => setProfile({ ...profile, contactName: e.target.value })}
                         placeholder="Enter contact person name"
+                        required
+                        error={errors.contactName}
                       />
                       <Input
                         label="Email"
@@ -338,6 +412,7 @@ export default function Home() {
                         onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                         required
                         placeholder="Enter your email address"
+                        error={errors.email}
                       />
                       <Input
                         label="Phone"
@@ -354,6 +429,8 @@ export default function Home() {
                         value={profile.name}
                         onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                         placeholder="Enter your full name"
+                        required
+                        error={errors.name}
                       />
                       <Input
                         label="Email"
@@ -362,12 +439,15 @@ export default function Home() {
                         onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                         required
                         placeholder="Enter your email address"
+                        error={errors.email}
                       />
                       <Input
                         label="Vehicle Reg"
                         value={profile.vehicleReg}
                         onChange={(e) => setProfile({ ...profile, vehicleReg: e.target.value })}
                         placeholder="Enter vehicle registration number"
+                        required
+                        error={errors.vehicleReg}
                       />
                       <Input
                         label="Phone"
@@ -378,8 +458,13 @@ export default function Home() {
                     </>
                   )}
                   <div className="pt-4">
-                    <Button onClick={handleRegister} size="lg" className="w-full">
-                      Complete Registration
+                    <Button 
+                      onClick={handleRegister} 
+                      size="lg" 
+                      className="w-full"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'Registering...' : 'Complete Registration'}
                     </Button>
                     <p className="text-xs text-dusk-gray text-center mt-3">
                       * Email address is required for account verification and notifications

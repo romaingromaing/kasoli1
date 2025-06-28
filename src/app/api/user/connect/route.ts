@@ -8,6 +8,8 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const { address, role, profile } = await request.json();
+    console.log('User connect request:', { address, role, profile });
+    
     if (!address || !role) {
       return NextResponse.json({ error: 'Address and role required' }, { status: 400 });
     }
@@ -29,6 +31,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.user.findUnique({ where: { walletAddress: wallet } });
 
     if (existing) {
+      console.log('Existing user found:', existing);
       // Allow platform address to switch roles freely
       if (existing.currentRole !== role && platformAddress && wallet === platformAddress) {
         // Update the user's current role
@@ -50,9 +53,12 @@ export async function POST(request: NextRequest) {
               phone: profile?.phone,
               email: profile?.email 
             },
-          }).catch(() => {});
+          }).catch((err) => {
+            console.error('Farmer update error:', err);
+          });
           break;
         case 'BUYER':
+          console.log('Updating buyer profile:', { wallet, profile });
           await prisma.buyer.update({
             where: { walletAddress: wallet },
             data: { 
@@ -61,7 +67,9 @@ export async function POST(request: NextRequest) {
               phone: profile?.phone,
               email: profile?.email 
             },
-          }).catch(() => {});
+          }).catch((err) => {
+            console.error('Buyer update error:', err);
+          });
           break;
         case 'TRANSPORTER':
           await prisma.transporter.update({
@@ -72,7 +80,9 @@ export async function POST(request: NextRequest) {
               phone: profile?.phone,
               email: profile?.email 
             },
-          }).catch(() => {});
+          }).catch((err) => {
+            console.error('Transporter update error:', err);
+          });
           break;
         case 'PLATFORM':
           await prisma.platform.update({
@@ -83,12 +93,15 @@ export async function POST(request: NextRequest) {
               url: profile?.url,
               email: profile?.email 
             },
-          }).catch(() => {});
+          }).catch((err) => {
+            console.error('Platform update error:', err);
+          });
           break;
       }
       return NextResponse.json({ success: true });
     }
 
+    console.log('Creating new user:', { wallet, role, profile });
     await prisma.user.create({
       data: { 
         walletAddress: wallet, 
@@ -99,6 +112,7 @@ export async function POST(request: NextRequest) {
 
     switch (role) {
       case 'FARMER':
+        console.log('Creating farmer profile');
         await prisma.farmer.create({
           data: { 
             walletAddress: wallet, 
@@ -109,6 +123,7 @@ export async function POST(request: NextRequest) {
         });
         break;
       case 'BUYER':
+        console.log('Creating buyer profile:', { wallet, profile });
         await prisma.buyer.create({
           data: { 
             walletAddress: wallet, 
@@ -120,6 +135,7 @@ export async function POST(request: NextRequest) {
         });
         break;
       case 'TRANSPORTER':
+        console.log('Creating transporter profile');
         await prisma.transporter.create({
           data: { 
             walletAddress: wallet, 
@@ -131,6 +147,7 @@ export async function POST(request: NextRequest) {
         });
         break;
       case 'PLATFORM':
+        console.log('Creating platform profile');
         await prisma.platform.create({
           data: { 
             id: 1, 
@@ -145,9 +162,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
     }
 
+    console.log('User registration successful');
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('Failed to connect user', err);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Server error', 
+      details: err instanceof Error ? err.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

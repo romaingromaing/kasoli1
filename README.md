@@ -184,3 +184,7 @@ The application includes comprehensive testing:
 - **Integration Tests**: User workflow testing
 - **E2E Tests**: Complete user journey testing
 - **Smart Contract Tests**: Blockchain interaction testing
+
+### clening the db commands
+
+npx prisma migrate reset --force && npx prisma db seed

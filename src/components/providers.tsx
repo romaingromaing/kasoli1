@@ -5,10 +5,21 @@ import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider, darkTheme, lightTheme } from '@rainbow-me/rainbowkit';
 import { config } from '@/lib/wagmi';
 import '@rainbow-me/rainbowkit/styles.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-gradient-to-br from-warm-white to-lime-lush/10 flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-teal-deep border-t-transparent rounded-full animate-spin" />
+    </div>;
+  }
 
   return (
     <WagmiProvider config={config}>
