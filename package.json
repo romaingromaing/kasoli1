@@ -9,7 +9,9 @@
     "lint": "next lint",
     "vercel-build": "prisma generate && prisma db push && next build",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "prisma:generate": "prisma generate",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "6.10.1",
