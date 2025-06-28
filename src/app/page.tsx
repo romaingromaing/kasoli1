@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { role, loading } = useRole();
-  const [selectedRole, setSelectedRole] = useState<Role>('FARMER');
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [profile, setProfile] = useState({
     name: '',
@@ -38,6 +38,7 @@ export default function Home() {
 
   const handleBackToRoleSelection = () => {
     setShowRegistrationForm(false);
+    setSelectedRole(null);
     setProfile({
       name: '',
       phone: '',
@@ -270,7 +271,7 @@ export default function Home() {
               }}
             </ConnectButton.Custom>
             
-            {showRegistrationForm && (
+            {showRegistrationForm && selectedRole && (
               <div className="mt-8 space-y-6 max-w-md mx-auto px-4">
                 <div className="bg-gradient-to-r from-ocean-navy to-lime-lush text-white rounded-xl p-6 text-center">
                   <div className="flex items-center justify-center mb-4">
