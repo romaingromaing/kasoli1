@@ -1,35 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function POST(request: NextRequest, { params }: { params: { dealId: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ dealId: string }> }) {
   try {
-    const { dealId } = params;
-    const { payoutTxHash } = await request.json();
+    const { dealId } = await context.params;
 
-    // Update the deal status to PAID_OUT and store the payout transaction hash
+    // Find the deal
+    const deal = await prisma.deal.findUnique({
+      where: { id: dealId },
+      include: { batch: true },
+    });
+
+    if (!deal) {
+      return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
+    }
+
+    // Update deal status to PAID_OUT
     const updatedDeal = await prisma.deal.update({
       where: { id: dealId },
       data: {
         status: 'PAID_OUT',
-        payoutTxHash,
       },
-      include: {
-        batch: true,
-        buyer: true,
-        transporter: true,
-        signatures: true,
+      include: { batch: true },
+    });
+
+    // Update batch status to FINALISED
+    const updatedBatch = await prisma.batch.update({
+      where: { id: deal.batch.id },
+      data: {
+        status: 'FINALISED',
       },
     });
 
-    // Optionally, update the batch status to FINALISED
-    await prisma.batch.update({
-      where: { id: updatedDeal.batchId },
-      data: { status: 'FINALISED' },
-    });
-
-    return NextResponse.json(updatedDeal);
+    return NextResponse.json({ deal: updatedDeal, batch: updatedBatch });
   } catch (error) {
-    console.error('Failed to finalize deal:', error);
-    return NextResponse.json({ error: 'Failed to finalize deal' }, { status: 500 });
+    console.error('Finalize failed:', error);
+    return NextResponse.json({ error: 'Finalize failed' }, { status: 500 });
   }
 } 

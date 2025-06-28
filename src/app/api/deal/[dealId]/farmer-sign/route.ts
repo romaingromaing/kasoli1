@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// Farmer bit is 0x2
+// Farmer bit is 0x2, Transporter bit is 0x4, Buyer bit is 0x1
 const FARMER_BIT = 0x2;
 
-export async function POST(request: NextRequest, { params }: { params: { dealId: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ dealId: string }> }) {
   try {
-    const { dealId } = params;
+    const { dealId } = await context.params;
     // Optionally, you could check the farmer's address from the request body or session
 
     // Find the deal
@@ -23,11 +23,10 @@ export async function POST(request: NextRequest, { params }: { params: { dealId:
     let newStatus = deal.status;
     let batchStatus = deal.batch.status;
 
-    // If all required signatures are present, update status and batch
-    // (Assume next status is PENDING_SIGS, and batch goes IN_TRANSIT)
-    if (newSigMask & 0x2) {
-      newStatus = 'PENDING_SIGS';
-      batchStatus = 'IN_TRANSIT';
+    // If both farmer and transporter have signed, update status and batch
+    if ((newSigMask & FARMER_BIT) && (newSigMask & 0x4)) {
+      newStatus = 'READY_TO_FINAL';
+      batchStatus = 'DELIVERED';
     }
 
     const updatedDeal = await prisma.deal.update({

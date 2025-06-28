@@ -3,11 +3,11 @@ import prisma from '@/lib/prisma';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { dealId: string } }
+  context: { params: Promise<{ dealId: string }> }
 ) {
   try {
     const { escrowTxHash } = await request.json();
-    const { dealId } = params;
+    const { dealId } = await context.params;
 
     if (!escrowTxHash) {
       return NextResponse.json({ error: 'escrowTxHash is required' }, { status: 400 });

@@ -11,10 +11,24 @@ async function main() {
       walletAddress: '0x383d00b8E88c89612FeCFCE522d6022460B5e7A6',
       name: 'Kasoli Platform',
       url: 'https://kasoli.com',
+      email: 'platform@kasoli.com',
+    },
+  });
+
+  // Create User record for platform
+  const platformUser = await prisma.user.upsert({
+    where: { walletAddress: '0x383d00b8E88c89612FeCFCE522d6022460B5e7A6' },
+    update: {},
+    create: {
+      walletAddress: '0x383d00b8E88c89612FeCFCE522d6022460B5e7A6',
+      currentRole: 'PLATFORM',
+      email: 'platform@kasoli.com',
     },
   });
 
   console.log('Database seeded successfully!');
+  console.log('Platform created:', platform);
+  console.log('Platform user created:', platformUser);
 }
 
 main()

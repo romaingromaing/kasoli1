@@ -12,6 +12,7 @@ model Farmer {
   walletAddress String   @unique
   name          String?
   phone         String?
+  email         String?  @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   batches       Batch[]
@@ -24,6 +25,7 @@ model Buyer {
   organisation  String?
   contactName   String?
   phone         String?
+  email         String?  @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   deals         Deal[]   @relation("BuyerDeals")
@@ -35,6 +37,7 @@ model Transporter {
   name          String?
   vehicleReg    String?
   phone         String?
+  email         String?  @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   batches       Batch[]
@@ -46,6 +49,7 @@ model Platform {
   walletAddress String   @unique
   name          String?
   url           String?
+  email         String?  @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   deals         Deal[]
@@ -124,6 +128,7 @@ model User {
   id            String   @id @default(uuid())
   walletAddress String   @unique
   currentRole   Role
+  email         String?  @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

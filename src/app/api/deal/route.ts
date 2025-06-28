@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { DealStatus } from '@prisma/client';
 
 export async function GET(req: NextRequest) {
   try {
@@ -34,7 +33,7 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: 'desc' },
       });
       // Marshal deals into deliveries for the frontend
-      const deliveries = deals.map(deal => ({
+      const deliveries = deals.map((deal: any) => ({
         id: deal.id,
         status: deal.status,
         freightAmount: deal.freightAmount,

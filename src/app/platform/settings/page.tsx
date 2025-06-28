@@ -5,9 +5,10 @@ import { BottomNav } from '@/components/ui/bottom-nav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useRequireRole } from '@/lib/hooks/useRequireRole';
-import { useWriteContract, useReadContract } from 'wagmi';
+import { useWriteContract, useReadContract, useDisconnect } from 'wagmi';
 import { CONTRACTS, ORACLE_ABI } from '@/lib/contracts';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 
 export default function PlatformSettingsPage() {
   useRequireRole('PLATFORM');
@@ -18,6 +19,8 @@ export default function PlatformSettingsPage() {
     functionName: 'dieselUgxPerLitre',
   });
   const { writeContract, isPending } = useWriteContract();
+  const { disconnect } = useDisconnect();
+  const router = useRouter();
 
   const handleUpdate = () => {
     const val = parseFloat(price);
@@ -35,6 +38,11 @@ export default function PlatformSettingsPage() {
     setTimeout(() => refetch(), 2000);
   };
 
+  const handleLogout = () => {
+    disconnect();
+    router.push('/');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-warm-white to-lime-lush/5 pb-20">
       <div className="container mx-auto px-4 py-8 space-y-4">
@@ -49,6 +57,12 @@ export default function PlatformSettingsPage() {
           placeholder="5000"
         />
         <Button onClick={handleUpdate} loading={isPending}>Update Diesel Price</Button>
+        
+        <div className="pt-6 border-t border-dusk-gray/20">
+          <Button variant="outline" onClick={handleLogout} className="w-full">
+            Logout
+          </Button>
+        </div>
       </div>
       <BottomNav />
     </div>

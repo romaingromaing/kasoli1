@@ -11,6 +11,7 @@ import { CONTRACTS, RECEIPT_ABI } from '@/lib/contracts';
 import { decodeEventLog } from 'viem';
 import toast from 'react-hot-toast';
 import { QRGenerator } from '@/components/qr-generator';
+import { useRouter } from 'next/navigation';
 
 interface CreateBatchModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
     hash,
   });
   const { address } = useAccount();
+  const router = useRouter();
 
   // Location search functionality with better dropdown management
   useEffect(() => {
@@ -262,6 +264,10 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
 
         toast.success('Batch created successfully!');
         setStep('success');
+        // Refresh the page to show the new batch
+        setTimeout(() => {
+          router.refresh();
+        }, 1000);
       } catch (err) {
         console.error('Error storing batch:', err);
         toast.error('Failed to store batch');

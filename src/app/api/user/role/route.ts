@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   const wallet = address.toLowerCase();
+  const platformAddress = process.env.NEXT_PUBLIC_PLATFORM_ADDRESS?.toLowerCase();
 
   // First check the new User model for the current role
   const user = await prisma.user.findUnique({ 
@@ -18,6 +19,11 @@ export async function GET(request: NextRequest) {
 
   if (user) {
     return NextResponse.json({ role: user.currentRole });
+  }
+
+  // If this is the platform address and no specific role is set, default to PLATFORM
+  if (platformAddress && wallet === platformAddress) {
+    return NextResponse.json({ role: 'PLATFORM' });
   }
 
   // Fallback to the old method for backwards compatibility

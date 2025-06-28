@@ -123,7 +123,7 @@ export default function BuyerOrdersPage() {
     if (!order) return;
     setPayingDealId(order.id);
     try {
-      const contractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS!;
+      const contractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS! as `0x${string}`;
       const batchIdBytes32 = keccak256(toBytes(order.batch?.id));
       const farmer = order.batch?.farmer?.walletAddress;
       const transporter = order.transporter?.walletAddress;
@@ -186,7 +186,7 @@ export default function BuyerOrdersPage() {
   async function handleCompleteDeal(order: any) {
     if (!order) return;
     try {
-      const contractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS!;
+      const contractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS! as `0x${string}`;
       const batchIdBytes32 = keccak256(toBytes(order.batch?.id));
       // Defensive check
       if (!address) {

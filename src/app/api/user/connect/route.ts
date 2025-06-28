@@ -8,37 +8,65 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Address and role required' }, { status: 400 });
     }
     const wallet = (address as string).toLowerCase();
+    const platformAddress = process.env.NEXT_PUBLIC_PLATFORM_ADDRESS?.toLowerCase();
 
     const existing = await prisma.user.findUnique({ where: { walletAddress: wallet } });
 
     if (existing) {
-      if (existing.currentRole !== role) {
+      // Allow platform address to switch roles freely
+      if (existing.currentRole !== role && platformAddress && wallet === platformAddress) {
+        // Update the user's current role
+        await prisma.user.update({
+          where: { walletAddress: wallet },
+          data: { currentRole: role as any },
+        });
+      } else if (existing.currentRole !== role) {
         return NextResponse.json({ error: 'Role already assigned' }, { status: 400 });
       }
+      
       // Update profile details if provided
       switch (role) {
         case 'FARMER':
           await prisma.farmer.update({
             where: { walletAddress: wallet },
-            data: { name: profile?.name, phone: profile?.phone },
+            data: { 
+              name: profile?.name, 
+              phone: profile?.phone,
+              email: profile?.email 
+            },
           }).catch(() => {});
           break;
         case 'BUYER':
           await prisma.buyer.update({
             where: { walletAddress: wallet },
-            data: { organisation: profile?.organisation, contactName: profile?.contactName, phone: profile?.phone },
+            data: { 
+              organisation: profile?.organisation, 
+              contactName: profile?.contactName, 
+              phone: profile?.phone,
+              email: profile?.email 
+            },
           }).catch(() => {});
           break;
         case 'TRANSPORTER':
           await prisma.transporter.update({
             where: { walletAddress: wallet },
-            data: { name: profile?.name, vehicleReg: profile?.vehicleReg, phone: profile?.phone },
+            data: { 
+              name: profile?.name, 
+              vehicleReg: profile?.vehicleReg, 
+              phone: profile?.phone,
+              email: profile?.email 
+            },
           }).catch(() => {});
           break;
         case 'PLATFORM':
           await prisma.platform.update({
             where: { id: 1 },
-            data: { walletAddress: wallet, name: profile?.name, url: profile?.url },
+            data: { 
+              walletAddress: wallet, 
+              name: profile?.name, 
+              url: profile?.url,
+              email: profile?.email 
+            },
           }).catch(() => {});
           break;
       }
@@ -46,28 +74,55 @@ export async function POST(request: NextRequest) {
     }
 
     await prisma.user.create({
-      data: { walletAddress: wallet, currentRole: role },
+      data: { 
+        walletAddress: wallet, 
+        currentRole: role,
+        email: profile?.email 
+      },
     });
 
     switch (role) {
       case 'FARMER':
         await prisma.farmer.create({
-          data: { walletAddress: wallet, name: profile?.name ?? null, phone: profile?.phone ?? null },
+          data: { 
+            walletAddress: wallet, 
+            name: profile?.name ?? null, 
+            phone: profile?.phone ?? null,
+            email: profile?.email ?? null 
+          },
         });
         break;
       case 'BUYER':
         await prisma.buyer.create({
-          data: { walletAddress: wallet, organisation: profile?.organisation ?? null, contactName: profile?.contactName ?? null, phone: profile?.phone ?? null },
+          data: { 
+            walletAddress: wallet, 
+            organisation: profile?.organisation ?? null, 
+            contactName: profile?.contactName ?? null, 
+            phone: profile?.phone ?? null,
+            email: profile?.email ?? null 
+          },
         });
         break;
       case 'TRANSPORTER':
         await prisma.transporter.create({
-          data: { walletAddress: wallet, name: profile?.name ?? null, vehicleReg: profile?.vehicleReg ?? null, phone: profile?.phone ?? null },
+          data: { 
+            walletAddress: wallet, 
+            name: profile?.name ?? null, 
+            vehicleReg: profile?.vehicleReg ?? null, 
+            phone: profile?.phone ?? null,
+            email: profile?.email ?? null 
+          },
         });
         break;
       case 'PLATFORM':
         await prisma.platform.create({
-          data: { id: 1, walletAddress: wallet, name: profile?.name ?? null, url: profile?.url ?? null },
+          data: { 
+            id: 1, 
+            walletAddress: wallet, 
+            name: profile?.name ?? null, 
+            url: profile?.url ?? null,
+            email: profile?.email ?? null 
+          },
         });
         break;
       default:

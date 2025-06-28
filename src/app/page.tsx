@@ -17,6 +17,7 @@ export default function Home() {
   const [profile, setProfile] = useState({
     name: '',
     phone: '',
+    email: '',
     organisation: '',
     contactName: '',
     vehicleReg: '',
@@ -30,7 +31,7 @@ export default function Home() {
   }, [isConnected, role, loading, router]);
 
   const handleRegister = async () => {
-    if (!address) return;
+    if (!address || !selectedRole) return;
     await fetch('/api/user/connect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -229,6 +230,13 @@ export default function Home() {
                       onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                     />
                     <Input
+                      label="Email"
+                      type="email"
+                      value={profile.email}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      required
+                    />
+                    <Input
                       label="Phone"
                       value={profile.phone}
                       onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
@@ -248,6 +256,13 @@ export default function Home() {
                       onChange={(e) => setProfile({ ...profile, contactName: e.target.value })}
                     />
                     <Input
+                      label="Email"
+                      type="email"
+                      value={profile.email}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      required
+                    />
+                    <Input
                       label="Phone"
                       value={profile.phone}
                       onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
@@ -260,6 +275,13 @@ export default function Home() {
                       label="Name"
                       value={profile.name}
                       onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    />
+                    <Input
+                      label="Email"
+                      type="email"
+                      value={profile.email}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      required
                     />
                     <Input
                       label="Vehicle Reg"
