@@ -39,6 +39,10 @@ export default function TransporterDeliveriesPage() {
       console.log('Sign Pickup button clicked for delivery:', delivery);
       const res = await fetch(`/api/deal/${delivery.id}/transporter-sign`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transporterAddress: address,
+        }),
       });
       const data = await res.json();
       console.log('Sign pickup API response:', res.status, data);

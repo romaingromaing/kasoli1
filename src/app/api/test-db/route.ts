@@ -6,33 +6,36 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    // Test database connection
-    const batchCount = await prisma.batch.count();
-    const farmerCount = await prisma.farmer.count();
-    const buyerCount = await prisma.buyer.count();
-    
-    // Get some sample data
-    const recentBatches = await prisma.batch.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: { farmer: true }
-    });
-    
-    return NextResponse.json({
-      success: true,
-      counts: {
-        batches: batchCount,
-        farmers: farmerCount,
-        buyers: buyerCount
+    const deals = await prisma.deal.findMany({
+      include: {
+        batch: true,
+        buyer: true,
+        transporter: true,
+        farmer: true,
+        platform: true,
       },
-      recentBatches
+    });
+
+    const buyers = await prisma.buyer.findMany();
+    const farmers = await prisma.farmer.findMany();
+    const transporters = await prisma.transporter.findMany();
+    const batches = await prisma.batch.findMany({
+      include: {
+        farmer: true,
+      },
+    });
+
+    return NextResponse.json({
+      deals: deals.length,
+      buyers: buyers.length,
+      farmers: farmers.length,
+      transporters: transporters.length,
+      batches: batches.length,
+      dealDetails: deals,
+      batchDetails: batches,
     });
   } catch (error) {
     console.error('Database test failed:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Database connection failed',
-      details: error 
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Database test failed' }, { status: 500 });
   }
 }
