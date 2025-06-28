@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
         createdAt: deal.createdAt,
         updatedAt: deal.updatedAt,
         sigMask: deal.sigMask,
+        escrowTxHash: deal.escrowTxHash,
         // Add any other fields needed by the frontend here
       }));
       return NextResponse.json(deliveries);
