@@ -26,6 +26,32 @@ export function FundEscrowModal({ isOpen, onClose, deal }: FundEscrowModalProps)
     setStep('processing');
 
     try {
+      // Validate all required addresses are present
+      const farmerAddress = deal.farmer?.walletAddress || deal.batch?.farmer?.walletAddress;
+      const transporterAddress = deal.transporter?.walletAddress;
+      const platformAddress = CONTRACTS.PLATFORM;
+
+      if (!farmerAddress) {
+        throw new Error('Farmer address is missing');
+      }
+      if (!transporterAddress) {
+        throw new Error('Transporter address is missing');
+      }
+      if (!platformAddress) {
+        throw new Error('Platform address is missing');
+      }
+
+      // Validate addresses are not zero addresses
+      if (farmerAddress === '0x0000000000000000000000000000000000000000') {
+        throw new Error('Invalid farmer address');
+      }
+      if (transporterAddress === '0x0000000000000000000000000000000000000000') {
+        throw new Error('Invalid transporter address');
+      }
+      if (platformAddress === '0x0000000000000000000000000000000000000000') {
+        throw new Error('Invalid platform address');
+      }
+
       // Convert USD amounts to USDC (6 decimals)
       const farmerAmountUSDC = BigInt(Math.floor(parseFloat(deal.farmerAmount) * 1000000));
       const freightAmountUSDC = BigInt(Math.floor(parseFloat(deal.freightAmount || '0') * 1000000));
@@ -42,9 +68,9 @@ export function FundEscrowModal({ isOpen, onClose, deal }: FundEscrowModalProps)
         freightAmountUSDC: freightAmountUSDC.toString(),
         platformFeeUSDC: platformFeeUSDC.toString(),
         totalAmountUSDC: totalAmountUSDC.toString(),
-        farmerAddress: deal.farmer?.walletAddress,
-        transporterAddress: deal.transporter?.walletAddress,
-        platformAddress: CONTRACTS.PLATFORM,
+        farmerAddress,
+        transporterAddress,
+        platformAddress,
       });
 
       // Step 1: Approve USDC spending for escrow contract
@@ -74,9 +100,9 @@ export function FundEscrowModal({ isOpen, onClose, deal }: FundEscrowModalProps)
         functionName: 'lock',
         args: [
           batchIdBytes32,
-          deal.farmer?.walletAddress as `0x${string}`,
-          deal.transporter?.walletAddress as `0x${string}`,
-          CONTRACTS.PLATFORM as `0x${string}`,
+          farmerAddress as `0x${string}`,
+          transporterAddress as `0x${string}`,
+          platformAddress as `0x${string}`,
           farmerAmountUSDC,
           freightAmountUSDC,
           platformFeeUSDC,
@@ -120,6 +146,10 @@ export function FundEscrowModal({ isOpen, onClose, deal }: FundEscrowModalProps)
         errorMessage = 'Contract execution failed - check your balance and allowances';
       } else if (error.message?.includes('Failed to update deal')) {
         errorMessage = 'Failed to update deal with transaction hash';
+      } else if (error.message?.includes('address is missing')) {
+        errorMessage = error.message;
+      } else if (error.message?.includes('Invalid')) {
+        errorMessage = error.message;
       }
       
       toast.error(errorMessage);
@@ -129,9 +159,48 @@ export function FundEscrowModal({ isOpen, onClose, deal }: FundEscrowModalProps)
 
   if (!deal) return null;
 
+  // Debug logging to help identify address issues
+  console.log('FundEscrowModal deal data:', {
+    dealId: deal.id,
+    farmer: deal.farmer,
+    batchFarmer: deal.batch?.farmer,
+    transporter: deal.transporter,
+    platform: CONTRACTS.PLATFORM,
+    farmerAddress: deal.farmer?.walletAddress || deal.batch?.farmer?.walletAddress,
+    transporterAddress: deal.transporter?.walletAddress,
+  });
+
   const totalAmount = parseFloat(deal.farmerAmount || '0') + 
                      parseFloat(deal.freightAmount || '0') + 
                      parseFloat(deal.platformFee || '0');
+
+  // Check if we have all required data
+  const hasRequiredData = deal.farmer?.walletAddress || deal.batch?.farmer?.walletAddress;
+  const hasTransporter = deal.transporter?.walletAddress;
+  const hasPlatform = CONTRACTS.PLATFORM;
+
+  if (!hasRequiredData || !hasTransporter || !hasPlatform) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="Fund Escrow">
+        <div className="space-y-6">
+          <div className="bg-red-50 rounded-xl p-4">
+            <h3 className="font-semibold text-red-800 mb-2">Missing Required Data</h3>
+            <div className="space-y-1 text-sm text-red-700">
+              {!hasRequiredData && <div>• Farmer address is missing</div>}
+              {!hasTransporter && <div>• Transporter address is missing</div>}
+              {!hasPlatform && <div>• Platform address is missing</div>}
+            </div>
+            <p className="text-sm text-red-600 mt-2">
+              Please ensure all parties are properly assigned before funding escrow.
+            </p>
+          </div>
+          <Button onClick={onClose} className="w-full">
+            Close
+          </Button>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Fund Escrow">
@@ -151,6 +220,39 @@ export function FundEscrowModal({ isOpen, onClose, deal }: FundEscrowModalProps)
               <div className="flex justify-between">
                 <span className="text-dusk-gray">Transporter:</span>
                 <span className="text-ocean-navy">{deal.transporter?.name || deal.transporter?.walletAddress}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 rounded-xl p-4">
+            <h3 className="font-semibold text-ocean-navy mb-2">Escrow Addresses</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-dusk-gray flex items-center gap-1">
+                  <User size={14} />
+                  Farmer:
+                </span>
+                <span className="text-ocean-navy font-mono text-xs">
+                  {deal.farmer?.walletAddress || deal.batch?.farmer?.walletAddress || 'Not set'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-dusk-gray flex items-center gap-1">
+                  <Truck size={14} />
+                  Transporter:
+                </span>
+                <span className="text-ocean-navy font-mono text-xs">
+                  {deal.transporter?.walletAddress || 'Not set'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-dusk-gray flex items-center gap-1">
+                  <Building size={14} />
+                  Platform:
+                </span>
+                <span className="text-ocean-navy font-mono text-xs">
+                  {CONTRACTS.PLATFORM || 'Not set'}
+                </span>
               </div>
             </div>
           </div>
