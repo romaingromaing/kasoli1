@@ -32,6 +32,20 @@ export default function Home() {
 
   const handleRegister = async () => {
     if (!address || !selectedRole) return;
+    
+    // Validate email is provided for all user types
+    if (!profile.email || !profile.email.trim()) {
+      alert('Email address is required for all user types');
+      return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(profile.email)) {
+      alert('Please enter a valid email address');
+      return;
+    }
+    
     await fetch('/api/user/connect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -235,6 +249,7 @@ export default function Home() {
                       value={profile.email}
                       onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                       required
+                      placeholder="Enter your email address"
                     />
                     <Input
                       label="Phone"
@@ -261,6 +276,7 @@ export default function Home() {
                       value={profile.email}
                       onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                       required
+                      placeholder="Enter your email address"
                     />
                     <Input
                       label="Phone"
@@ -282,6 +298,7 @@ export default function Home() {
                       value={profile.email}
                       onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                       required
+                      placeholder="Enter your email address"
                     />
                     <Input
                       label="Vehicle Reg"
@@ -298,6 +315,9 @@ export default function Home() {
                 <Button onClick={handleRegister} size="lg" className="w-full">
                   Complete Sign Up
                 </Button>
+                <p className="text-xs text-dusk-gray text-center mt-2">
+                  * Email address is required for account verification and notifications
+                </p>
               </div>
             )}
           </motion.div>

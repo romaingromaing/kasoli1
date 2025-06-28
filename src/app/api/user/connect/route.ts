@@ -11,6 +11,18 @@ export async function POST(request: NextRequest) {
     if (!address || !role) {
       return NextResponse.json({ error: 'Address and role required' }, { status: 400 });
     }
+
+    // Validate email is provided for all user types
+    if (!profile?.email || !profile.email.trim()) {
+      return NextResponse.json({ error: 'Email address is required for all user types' }, { status: 400 });
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(profile.email)) {
+      return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
+    }
+
     const wallet = (address as string).toLowerCase();
     const platformAddress = process.env.NEXT_PUBLIC_PLATFORM_ADDRESS?.toLowerCase();
 
