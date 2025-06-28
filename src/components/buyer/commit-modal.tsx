@@ -368,7 +368,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
               Back
             </Button>
             <Button onClick={handleCommit} className="flex-1">
-              Commit & Pay
+              Commit
             </Button>
           </div>
         </div>

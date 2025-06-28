@@ -14,6 +14,7 @@ export default function Home() {
   const { address, isConnected } = useAccount();
   const { role, loading } = useRole();
   const [selectedRole, setSelectedRole] = useState<Role>('FARMER');
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [profile, setProfile] = useState({
     name: '',
     phone: '',
@@ -29,6 +30,23 @@ export default function Home() {
       router.push(`/${role.toLowerCase()}`);
     }
   }, [isConnected, role, loading, router]);
+
+  const handleRoleSelect = (role: Role) => {
+    setSelectedRole(role);
+    setShowRegistrationForm(true);
+  };
+
+  const handleBackToRoleSelection = () => {
+    setShowRegistrationForm(false);
+    setProfile({
+      name: '',
+      phone: '',
+      email: '',
+      organisation: '',
+      contactName: '',
+      vehicleReg: '',
+    });
+  };
 
   const handleRegister = async () => {
     if (!address || !selectedRole) return;
@@ -120,18 +138,6 @@ export default function Home() {
             transition={{ delay: 0.3, duration: 0.4 }}
             className="mb-12"
           >
-            <div className="flex justify-center gap-3 mb-6">
-              {(['FARMER', 'BUYER', 'TRANSPORTER'] as const).map((r) => (
-                <Button
-                  key={r}
-                  variant={selectedRole === r ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedRole(r)}
-                >
-                  {r.charAt(0) + r.slice(1).toLowerCase()}
-                </Button>
-              ))}
-            </div>
             <ConnectButton.Custom>
               {({
                 account,
@@ -188,45 +194,74 @@ export default function Home() {
                       }
 
                       return (
-                        <div className="flex gap-3 justify-center">
-                          <Button
-                            onClick={openChainModal}
-                            variant="outline"
-                            size="md"
-                          >
-                            {chain.hasIcon && (
-                              <div
-                                style={{
-                                  background: chain.iconBackground,
-                                  width: 12,
-                                  height: 12,
-                                  borderRadius: 999,
-                                  overflow: 'hidden',
-                                  marginRight: 4,
-                                }}
-                              >
-                                {chain.iconUrl && (
-                                  <img
-                                    alt={chain.name ?? 'Chain icon'}
-                                    src={chain.iconUrl}
-                                    style={{ width: 12, height: 12 }}
-                                  />
-                                )}
-                              </div>
-                            )}
-                            {chain.name}
-                          </Button>
+                        <div className="space-y-6">
+                          <div className="flex gap-3 justify-center">
+                            <Button
+                              onClick={openChainModal}
+                              variant="outline"
+                              size="md"
+                            >
+                              {chain.hasIcon && (
+                                <div
+                                  style={{
+                                    background: chain.iconBackground,
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: 999,
+                                    overflow: 'hidden',
+                                    marginRight: 4,
+                                  }}
+                                >
+                                  {chain.iconUrl && (
+                                    <img
+                                      alt={chain.name ?? 'Chain icon'}
+                                      src={chain.iconUrl}
+                                      style={{ width: 12, height: 12 }}
+                                    />
+                                  )}
+                                </div>
+                              )}
+                              {chain.name}
+                            </Button>
 
-                          <Button
-                            onClick={openAccountModal}
-                            variant="primary"
-                            size="md"
-                          >
-                            {account.displayName}
-                            {account.displayBalance
-                              ? ` (${account.displayBalance})`
-                              : ''}
-                          </Button>
+                            <Button
+                              onClick={openAccountModal}
+                              variant="primary"
+                              size="md"
+                            >
+                              {account.displayName}
+                              {account.displayBalance
+                                ? ` (${account.displayBalance})`
+                                : ''}
+                            </Button>
+                          </div>
+                          
+                          {!showRegistrationForm && !role && (
+                            <div className="space-y-8">
+                              <div className="text-center">
+                                <h2 className="text-2xl font-semibold text-ocean-navy mb-4">
+                                  Choose Your Role
+                                </h2>
+                                <p className="text-dusk-gray mb-8">
+                                  Select the role that best describes your participation in the grain trading platform
+                                </p>
+                              </div>
+                              
+                              <div className="flex flex-col md:flex-row justify-center gap-4 max-w-2xl mx-auto px-4 mb-8">
+                                {(['FARMER', 'BUYER', 'TRANSPORTER'] as const).map((roleOption) => (
+                                  <Button
+                                    key={roleOption}
+                                    variant="outline"
+                                    size="lg"
+                                    onClick={() => handleRoleSelect(roleOption)}
+                                    className="flex-1 py-6 text-lg font-semibold flex items-center justify-center"
+                                  >
+                                    {roleOption.charAt(0) + roleOption.slice(1).toLowerCase()}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
@@ -234,90 +269,122 @@ export default function Home() {
                 );
               }}
             </ConnectButton.Custom>
-            {isConnected && !role && (
-              <div className="mt-6 space-y-3 max-w-sm mx-auto text-left">
-                {selectedRole === 'FARMER' && (
-                  <>
-                    <Input
-                      label="Name"
-                      value={profile.name}
-                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    />
-                    <Input
-                      label="Email"
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      required
-                      placeholder="Enter your email address"
-                    />
-                    <Input
-                      label="Phone"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                    />
-                  </>
-                )}
-                {selectedRole === 'BUYER' && (
-                  <>
-                    <Input
-                      label="Organisation"
-                      value={profile.organisation}
-                      onChange={(e) => setProfile({ ...profile, organisation: e.target.value })}
-                    />
-                    <Input
-                      label="Contact Name"
-                      value={profile.contactName}
-                      onChange={(e) => setProfile({ ...profile, contactName: e.target.value })}
-                    />
-                    <Input
-                      label="Email"
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      required
-                      placeholder="Enter your email address"
-                    />
-                    <Input
-                      label="Phone"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                    />
-                  </>
-                )}
-                {selectedRole === 'TRANSPORTER' && (
-                  <>
-                    <Input
-                      label="Name"
-                      value={profile.name}
-                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    />
-                    <Input
-                      label="Email"
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      required
-                      placeholder="Enter your email address"
-                    />
-                    <Input
-                      label="Vehicle Reg"
-                      value={profile.vehicleReg}
-                      onChange={(e) => setProfile({ ...profile, vehicleReg: e.target.value })}
-                    />
-                    <Input
-                      label="Phone"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                    />
-                  </>
-                )}
-                <Button onClick={handleRegister} size="lg" className="w-full">
-                  Complete Sign Up
-                </Button>
-                <p className="text-xs text-dusk-gray text-center mt-2">
-                  * Email address is required for account verification and notifications
-                </p>
+            
+            {showRegistrationForm && (
+              <div className="mt-8 space-y-6 max-w-md mx-auto px-4">
+                <div className="bg-gradient-to-r from-ocean-navy to-lime-lush text-white rounded-xl p-6 text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBackToRoleSelection}
+                      className="mr-4 bg-white/20 text-white border-white/30 hover:bg-white/30"
+                    >
+                      ← Back to Role Selection
+                    </Button>
+                  </div>
+                  <div className="text-2xl mb-3">
+                    {selectedRole === 'FARMER' ? '🌾' : selectedRole === 'BUYER' ? '🏢' : '🚛'}
+                  </div>
+                  <h3 className="text-lg font-semibold">
+                    Register as {selectedRole.charAt(0) + selectedRole.slice(1).toLowerCase()}
+                  </h3>
+                </div>
+                
+                <div className="bg-warm-white rounded-xl p-8 shadow-sm border border-dusk-gray/10 space-y-6">
+                  {selectedRole === 'FARMER' && (
+                    <>
+                      <Input
+                        label="Name"
+                        value={profile.name}
+                        onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                        placeholder="Enter your full name"
+                      />
+                      <Input
+                        label="Email"
+                        type="email"
+                        value={profile.email}
+                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                        required
+                        placeholder="Enter your email address"
+                      />
+                      <Input
+                        label="Phone"
+                        value={profile.phone}
+                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                        placeholder="Enter your phone number"
+                      />
+                    </>
+                  )}
+                  {selectedRole === 'BUYER' && (
+                    <>
+                      <Input
+                        label="Organisation"
+                        value={profile.organisation}
+                        onChange={(e) => setProfile({ ...profile, organisation: e.target.value })}
+                        placeholder="Enter your organisation name"
+                      />
+                      <Input
+                        label="Contact Name"
+                        value={profile.contactName}
+                        onChange={(e) => setProfile({ ...profile, contactName: e.target.value })}
+                        placeholder="Enter contact person name"
+                      />
+                      <Input
+                        label="Email"
+                        type="email"
+                        value={profile.email}
+                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                        required
+                        placeholder="Enter your email address"
+                      />
+                      <Input
+                        label="Phone"
+                        value={profile.phone}
+                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                        placeholder="Enter your phone number"
+                      />
+                    </>
+                  )}
+                  {selectedRole === 'TRANSPORTER' && (
+                    <>
+                      <Input
+                        label="Name"
+                        value={profile.name}
+                        onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                        placeholder="Enter your full name"
+                      />
+                      <Input
+                        label="Email"
+                        type="email"
+                        value={profile.email}
+                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                        required
+                        placeholder="Enter your email address"
+                      />
+                      <Input
+                        label="Vehicle Reg"
+                        value={profile.vehicleReg}
+                        onChange={(e) => setProfile({ ...profile, vehicleReg: e.target.value })}
+                        placeholder="Enter vehicle registration number"
+                      />
+                      <Input
+                        label="Phone"
+                        value={profile.phone}
+                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                        placeholder="Enter your phone number"
+                      />
+                    </>
+                  )}
+                  <div className="pt-4">
+                    <Button onClick={handleRegister} size="lg" className="w-full">
+                      Complete Registration
+                    </Button>
+                    <p className="text-xs text-dusk-gray text-center mt-3">
+                      * Email address is required for account verification and notifications
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </motion.div>

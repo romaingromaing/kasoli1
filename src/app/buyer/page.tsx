@@ -126,7 +126,7 @@ export default function BuyerDashboard() {
                         size="sm"
                         className="w-full"
                       >
-                        Commit & Pay
+                        Commit
                       </Button>
                     </div>
                   </div>

@@ -175,6 +175,10 @@ export default function BuyerOrdersPage() {
       toast.success('Escrow funded and deal updated!');
       // Refresh orders to show new status without full reload
       await load();
+      // Add a small delay then refresh the page for complete UI update
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (err) {
       console.error(err);
       toast.error('Payment failed or cancelled');
@@ -209,6 +213,10 @@ export default function BuyerOrdersPage() {
       });
       toast.success('Deal finalized and payout triggered!');
       await load();
+      // Add a small delay then refresh the page for complete UI update
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (err) {
       console.error(err);
       toast.error('Finalization failed or cancelled');
