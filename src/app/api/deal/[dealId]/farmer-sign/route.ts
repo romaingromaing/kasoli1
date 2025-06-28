@@ -4,9 +4,12 @@ import prisma from '@/lib/prisma';
 // Farmer bit is 0x2, Transporter bit is 0x4, Buyer bit is 0x1
 const FARMER_BIT = 0x2;
 
-export async function POST(request: NextRequest, context: { params: Promise<{ dealId: string }> }) {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ dealId: string }> }) {
   try {
-    const { dealId } = await context.params;
+    const { dealId } = await params;
     // Optionally, you could check the farmer's address from the request body or session
 
     // Find the deal

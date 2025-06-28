@@ -65,6 +65,9 @@ async function getGoogleMapsDistance(origins: string, destinations: string) {
   return result;
 }
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

@@ -9,10 +9,13 @@ const TRANSPORTER_BIT = 0x4;
 const FARMER_BIT = 0x2;
 const BUYER_BIT = 0x1;
 
-export async function POST(request: NextRequest, context: { params: Promise<{ dealId: string }> }) {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ dealId: string }> }) {
   try {
-    const { dealId } = await context.params;
-    const { transporterAddress } = await request.json();
+    const { dealId } = await params;
+    const { transporterAddress } = await req.json();
 
     if (!transporterAddress) {
       return NextResponse.json({ error: 'Transporter address is required' }, { status: 400 });

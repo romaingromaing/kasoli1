@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function POST(request: NextRequest, context: { params: Promise<{ dealId: string }> }) {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ dealId: string }> }) {
   try {
-    const { dealId } = await context.params;
+    const { dealId } = await params;
 
     // Find the deal
     const deal = await prisma.deal.findUnique({

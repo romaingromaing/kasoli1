@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ dealId: string }> }
-) {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ dealId: string }> }) {
   try {
-    const { escrowTxHash } = await request.json();
-    const { dealId } = await context.params;
+    const { escrowTxHash } = await req.json();
+    const { dealId } = await params;
 
     if (!escrowTxHash) {
       return NextResponse.json({ error: 'escrowTxHash is required' }, { status: 400 });
