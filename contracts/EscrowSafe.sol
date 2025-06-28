@@ -134,6 +134,21 @@ contract EscrowSafe {
         _payout(id);
     }
 
+    /**
+     * @notice Update transporter address - only allowed if current transporter is zero address
+     *         and no signatures have been made yet.
+     */
+    function updateTransporter(bytes32 id, address newTransporter) external {
+        Deal storage d = deals[id];
+        require(d.total > 0, "deal not found");
+        require(d.transporter == address(0), "transporter already set");
+        require(d.sigMask == 0, "signatures already made");
+        require(newTransporter != address(0), "invalid transporter address");
+        require(msg.sender == d.buyer || msg.sender == d.platform, "!authorized");
+        
+        d.transporter = newTransporter;
+    }
+
     /* -------------------------------------------------------------------------- */
     /*                                INTERNALS                                   */
     /* -------------------------------------------------------------------------- */

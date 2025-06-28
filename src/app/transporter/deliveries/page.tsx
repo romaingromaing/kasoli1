@@ -67,6 +67,34 @@ export default function TransporterDeliveriesPage() {
         return;
       }
 
+      // First, try to update transporter address if it's not set
+      try {
+        toast.loading('Checking transporter assignment...', { id: 'check-transporter' });
+        
+        const updateTxHash = await writeContractAsync({
+          address: contractAddress,
+          abi: ESCROW_ABI,
+          functionName: 'updateTransporter',
+          args: [batchIdBytes32, address as `0x${string}`],
+        });
+
+        console.log('Update transporter transaction hash:', updateTxHash);
+        toast.dismiss('check-transporter');
+        toast.loading('Waiting for transporter update confirmation...', { id: 'update-confirm' });
+
+        // Wait a bit for transaction to be confirmed
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        toast.dismiss('update-confirm');
+      } catch (updateError: any) {
+        // If update fails, it might mean transporter is already set or other conditions not met
+        // This is expected if transporter is already set correctly
+        console.log('Transporter update not needed or failed:', updateError.message);
+        toast.dismiss('check-transporter');
+      }
+
+      // Now try to sign
+      toast.loading('Signing pickup...', { id: 'sign-pickup' });
+
       const txHash = await writeContractAsync({
         address: contractAddress,
         abi: ESCROW_ABI,
@@ -75,7 +103,12 @@ export default function TransporterDeliveriesPage() {
       });
 
       console.log('Smart contract transaction hash:', txHash);
-      toast.loading('Waiting for transaction confirmation...');
+      toast.dismiss('sign-pickup');
+      toast.loading('Waiting for transaction confirmation...', { id: 'sign-confirm' });
+
+      // Wait a bit for transaction to be confirmed
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      toast.dismiss('sign-confirm');
 
       // Then update the backend
       const res = await fetch(`/api/deal/${delivery.id}/transporter-sign`, {
@@ -123,6 +156,10 @@ export default function TransporterDeliveriesPage() {
         errorMessage = 'Contract execution failed - check deal status';
       } else if (err.message?.includes('Deal has not been funded')) {
         errorMessage = 'Deal has not been funded in escrow yet';
+      } else if (err.message?.includes('!transporter')) {
+        errorMessage = 'You are not the assigned transporter for this deal';
+      } else if (err.message?.includes('farmer first')) {
+        errorMessage = 'Farmer must sign first before transporter can sign';
       }
       
       toast.error(errorMessage);

@@ -65,17 +65,86 @@ export default function TransporterDashboard() {
   const acceptDeal = async (dealId: string) => {
     if (!address) return;
     try {
+      // First, get the deal details to find the batch ID
+      const dealRes = await fetch(`/api/deal/${dealId}`);
+      if (!dealRes.ok) {
+        toast.error('Failed to get deal details');
+        return;
+      }
+      const deal = await dealRes.json();
+      
+      // Update transporter address in smart contract
+      const contractAddress = CONTRACTS.ESCROW as `0x${string}`;
+      const batchIdBytes32 = keccak256(toBytes(deal.batch?.id));
+      
+      console.log('Updating transporter in smart contract:', {
+        contractAddress,
+        batchIdBytes32,
+        batchId: deal.batch?.id,
+        transporterAddress: address,
+      });
+
+      // Validate contract address
+      if (!contractAddress || contractAddress === '0x0000000000000000000000000000000000000000') {
+        throw new Error('Invalid contract address');
+      }
+
+      // Check if the deal has been funded in the contract
+      if (!deal.escrowTxHash) {
+        toast.error('Deal has not been funded in escrow yet');
+        return;
+      }
+
+      toast.loading('Updating transporter in smart contract...', { id: 'update-transporter' });
+
+      const updateTxHash = await writeContractAsync({
+        address: contractAddress,
+        abi: ESCROW_ABI,
+        functionName: 'updateTransporter',
+        args: [batchIdBytes32, address as `0x${string}`],
+      });
+
+      console.log('Update transporter transaction hash:', updateTxHash);
+      toast.dismiss('update-transporter');
+      toast.loading('Waiting for transaction confirmation...', { id: 'update-confirm' });
+
+      // Wait a bit for transaction to be confirmed
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      toast.dismiss('update-confirm');
+
+      // Then accept the deal in the backend
       const res = await fetch(`/api/deal/${dealId}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transporterAddress: address }),
       });
+      
       if (res.ok) {
+        toast.success('Deal accepted successfully!');
         // Refresh data
         window.location.reload();
+      } else {
+        const errorData = await res.json();
+        toast.error(`Failed to accept deal: ${errorData.error || 'Unknown error'}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to accept deal', err);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to accept deal';
+      if (err.message?.includes('User rejected')) {
+        errorMessage = 'Transaction was cancelled';
+      } else if (err.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds for gas';
+      } else if (err.message?.includes('Invalid contract address')) {
+        errorMessage = 'Contract configuration error';
+      } else if (err.message?.includes('execution reverted')) {
+        errorMessage = 'Contract execution failed - check deal status';
+      } else if (err.message?.includes('Deal has not been funded')) {
+        errorMessage = 'Deal has not been funded in escrow yet';
+      }
+      
+      toast.error(errorMessage);
     }
   };
 
@@ -107,6 +176,34 @@ export default function TransporterDashboard() {
         return;
       }
 
+      // First, try to update transporter address if it's not set
+      try {
+        toast.loading('Checking transporter assignment...', { id: 'check-transporter' });
+        
+        const updateTxHash = await writeContractAsync({
+          address: contractAddress,
+          abi: ESCROW_ABI,
+          functionName: 'updateTransporter',
+          args: [batchIdBytes32, address as `0x${string}`],
+        });
+
+        console.log('Update transporter transaction hash:', updateTxHash);
+        toast.dismiss('check-transporter');
+        toast.loading('Waiting for transporter update confirmation...', { id: 'update-confirm' });
+
+        // Wait a bit for transaction to be confirmed
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        toast.dismiss('update-confirm');
+      } catch (updateError: any) {
+        // If update fails, it might mean transporter is already set or other conditions not met
+        // This is expected if transporter is already set correctly
+        console.log('Transporter update not needed or failed:', updateError.message);
+        toast.dismiss('check-transporter');
+      }
+
+      // Now try to sign
+      toast.loading('Signing pickup...', { id: 'sign-pickup' });
+
       const txHash = await writeContractAsync({
         address: contractAddress,
         abi: ESCROW_ABI,
@@ -115,7 +212,12 @@ export default function TransporterDashboard() {
       });
 
       console.log('Smart contract transaction hash:', txHash);
-      toast.loading('Waiting for transaction confirmation...');
+      toast.dismiss('sign-pickup');
+      toast.loading('Waiting for transaction confirmation...', { id: 'sign-confirm' });
+
+      // Wait a bit for transaction to be confirmed
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      toast.dismiss('sign-confirm');
 
       // Then update the backend
       const res = await fetch(`/api/deal/${delivery.id}/transporter-sign`, {
@@ -158,6 +260,10 @@ export default function TransporterDashboard() {
         errorMessage = 'Contract execution failed - check deal status';
       } else if (err.message?.includes('Deal has not been funded')) {
         errorMessage = 'Deal has not been funded in escrow yet';
+      } else if (err.message?.includes('!transporter')) {
+        errorMessage = 'You are not the assigned transporter for this deal';
+      } else if (err.message?.includes('farmer first')) {
+        errorMessage = 'Farmer must sign first before transporter can sign';
       }
       
       toast.error(errorMessage);
