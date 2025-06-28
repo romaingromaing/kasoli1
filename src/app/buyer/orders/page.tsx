@@ -348,13 +348,13 @@ export default function BuyerOrdersPage() {
                                     Pay & Initiate Escrow
                                   </button>
                                 )}
-                                {/* Complete button for READY_TO_FINAL */}
-                                {order.status === 'READY_TO_FINAL' && (
+                                {/* Complete button for READY_TO_FINAL or when both farmer and transporter have signed (sigMask = 6) */}
+                                {(order.status === 'READY_TO_FINAL' || (order.sigMask === 6 && order.escrowTxHash)) && (
                                   <button
                                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded disabled:opacity-50 mt-2"
                                     onClick={() => handleCompleteDeal(order)}
                                   >
-                                    Complete
+                                    Complete Transaction
                                   </button>
                                 )}
                               </div>
@@ -461,13 +461,13 @@ export default function BuyerOrdersPage() {
                                 </div>
                               </div>
 
-                              {/* Complete button for READY_TO_FINAL */}
-                              {order.status === 'READY_TO_FINAL' && (
+                              {/* Complete button for READY_TO_FINAL or when both farmer and transporter have signed (sigMask = 6) */}
+                              {(order.status === 'READY_TO_FINAL' || (order.sigMask === 6 && order.escrowTxHash)) && (
                                 <button
                                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded disabled:opacity-50 mt-2"
                                   onClick={() => handleCompleteDeal(order)}
                                 >
-                                  Complete
+                                  Complete Transaction
                                 </button>
                               )}
                             </div>
