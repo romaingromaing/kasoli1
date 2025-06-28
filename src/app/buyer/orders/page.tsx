@@ -131,15 +131,19 @@ export default function BuyerOrdersPage() {
   };
 
   async function handleCompleteDeal(order: any) {
-    if (!order) return;
+    if (!order || !address) return;
     try {
       const contractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS! as `0x${string}`;
       const batchIdBytes32 = keccak256(toBytes(order.batch?.id));
+      
       // Defensive check
       if (!address) {
         toast.error('Missing buyer address');
         return;
       }
+
+      toast.loading('Signing delivery...', { id: 'buyer-sign' });
+
       // Call buyerSign on the contract
       const txHash = await writeContractAsync({
         address: contractAddress,
@@ -147,22 +151,52 @@ export default function BuyerOrdersPage() {
         functionName: 'buyerSign',
         args: [batchIdBytes32],
       });
-      toast.loading('Waiting for transaction confirmation...');
-      // Optionally, update backend with payoutTxHash
-      await fetch(`/api/deal/${order.id}/finalize`, {
+
+      console.log('Buyer sign transaction hash:', txHash);
+      toast.dismiss('buyer-sign');
+      toast.loading('Waiting for transaction confirmation...', { id: 'sign-confirm' });
+
+      // Wait a bit for transaction to be confirmed
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      toast.dismiss('sign-confirm');
+
+      // Update backend with signature
+      const signResponse = await fetch(`/api/deal/${order.id}/buyer-sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payoutTxHash: txHash }),
+        body: JSON.stringify({
+          buyerAddress: address,
+          txHash: txHash,
+        }),
       });
+
+      if (!signResponse.ok) {
+        const errorData = await signResponse.json();
+        throw new Error(errorData.error || 'Failed to update signature in backend');
+      }
+
       toast.success('Deal finalized and payout triggered!');
       await load();
       // Add a small delay then refresh the page for complete UI update
       setTimeout(() => {
         window.location.reload();
       }, 1000);
-    } catch (err) {
-      console.error(err);
-      toast.error('Finalization failed or cancelled');
+    } catch (err: any) {
+      console.error('Error in handleCompleteDeal:', err);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Finalization failed or cancelled';
+      if (err.message?.includes('User rejected')) {
+        errorMessage = 'Transaction was cancelled';
+      } else if (err.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds for gas';
+      } else if (err.message?.includes('execution reverted')) {
+        errorMessage = 'Contract execution failed - check deal status';
+      } else if (err.message?.includes('Failed to update signature')) {
+        errorMessage = 'Failed to update signature in backend';
+      }
+      
+      toast.error(errorMessage);
     }
   }
 

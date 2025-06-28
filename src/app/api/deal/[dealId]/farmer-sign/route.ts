@@ -11,15 +11,46 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest, { params }: { params: Promise<{ dealId: string }> }) {
   try {
     const { dealId } = await params;
-    // Optionally, you could check the farmer's address from the request body or session
+    const body = await req.json();
+    const { farmerAddress, txHash } = body;
 
-    // Find the deal
+    if (!farmerAddress) {
+      return NextResponse.json({ error: 'Farmer address is required' }, { status: 400 });
+    }
+
+    // Find the deal with farmer information
     const deal = await prisma.deal.findUnique({
       where: { id: dealId },
-      include: { batch: true },
+      include: { 
+        batch: {
+          include: {
+            farmer: true,
+          },
+        },
+      },
     });
+    
     if (!deal) {
       return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
+    }
+
+    // Verify the farmer address matches the deal's farmer
+    const dealFarmerAddress = deal.batch?.farmer?.walletAddress;
+    if (!dealFarmerAddress) {
+      return NextResponse.json({ error: 'Deal farmer not found' }, { status: 404 });
+    }
+
+    if (dealFarmerAddress.toLowerCase() !== farmerAddress.toLowerCase()) {
+      return NextResponse.json({ 
+        error: 'Unauthorized farmer. Only the deal farmer can sign this batch.',
+        expectedFarmer: dealFarmerAddress,
+        providedFarmer: farmerAddress
+      }, { status: 403 });
+    }
+
+    // Check if farmer has already signed
+    if (deal.sigMask & FARMER_BIT) {
+      return NextResponse.json({ error: 'Farmer has already signed this deal' }, { status: 400 });
     }
 
     // Update sigMask to set the farmer bit
@@ -39,7 +70,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dea
         sigMask: newSigMask,
         status: newStatus,
       },
-      include: { batch: true },
+      include: { 
+        batch: {
+          include: {
+            farmer: true,
+          },
+        },
+      },
     });
 
     // Update batch status if needed
@@ -48,6 +85,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dea
       updatedBatch = await prisma.batch.update({
         where: { id: deal.batch.id },
         data: { status: batchStatus },
+        include: {
+          farmer: true,
+        },
+      });
+    }
+
+    // Create signature record if txHash is provided
+    if (txHash) {
+      await prisma.signature.create({
+        data: {
+          dealId: dealId,
+          role: 'FARMER',
+          txHash: txHash,
+        },
       });
     }
 

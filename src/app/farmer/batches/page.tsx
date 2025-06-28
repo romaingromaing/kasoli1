@@ -45,6 +45,16 @@ export default function FarmerBatchesPage() {
       return;
     }
     
+    console.log('Farmer sign attempt:', {
+      batchId: batch.id,
+      dealId: batch.deal.id,
+      farmerAddress: address,
+      batchFarmer: batch.farmer?.walletAddress,
+      dealFarmer: batch.deal.batch?.farmer?.walletAddress,
+      escrowTxHash: batch.deal.escrowTxHash,
+      sigMask: batch.deal.sigMask,
+    });
+    
     setSigningBatchId(batch.id);
     try {
       // First, call the smart contract
@@ -89,11 +99,32 @@ export default function FarmerBatchesPage() {
         }),
       });
       
+      console.log('Farmer sign API response status:', res.status);
+      
       if (!res.ok) {
         const errorData = await res.json();
-        toast.error(`Failed to sign batch: ${errorData.error || 'Unknown error'}`);
+        console.error('Farmer sign API error:', errorData);
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to sign batch';
+        if (errorData.error?.includes('Unauthorized farmer')) {
+          errorMessage = 'You are not the authorized farmer for this deal';
+        } else if (errorData.error?.includes('already signed')) {
+          errorMessage = 'You have already signed this deal';
+        } else if (errorData.error?.includes('Deal not found')) {
+          errorMessage = 'Deal not found in database';
+        } else if (errorData.error?.includes('Deal farmer not found')) {
+          errorMessage = 'Farmer information missing from deal';
+        } else {
+          errorMessage = errorData.error || 'Unknown error';
+        }
+        
+        toast.error(errorMessage);
         return;
       }
+      
+      const responseData = await res.json();
+      console.log('Farmer sign API success:', responseData);
       
       toast.success('Batch signed successfully!');
       

@@ -95,6 +95,16 @@ export default function TransporterDashboard() {
   const handleTransporterSign = async (delivery: any) => {
     if (!delivery || !address) return;
     
+    console.log('Transporter sign attempt:', {
+      deliveryId: delivery.id,
+      batchId: delivery.batch?.id,
+      transporterAddress: address,
+      escrowTxHash: delivery.escrowTxHash,
+      sigMask: delivery.sigMask,
+      farmerSigned: delivery.sigMask & 0x2,
+      transporterSigned: delivery.sigMask & 0x4,
+    });
+    
     setSigningDealId(delivery.id);
     try {
       // First, call the smart contract
@@ -116,6 +126,18 @@ export default function TransporterDashboard() {
       // Check if the deal has been funded in the contract
       if (!delivery.escrowTxHash) {
         toast.error('Deal has not been funded in escrow yet');
+        return;
+      }
+
+      // Check if farmer has signed first (bit 0x2)
+      if (!(delivery.sigMask & 0x2)) {
+        toast.error('Farmer must sign first before transporter can sign');
+        return;
+      }
+
+      // Check if transporter has already signed (bit 0x4)
+      if (delivery.sigMask & 0x4) {
+        toast.error('You have already signed this pickup');
         return;
       }
 
@@ -147,12 +169,16 @@ export default function TransporterDashboard() {
         }),
       });
       
+      console.log('Transporter sign API response status:', res.status);
+      
       const data = await res.json();
       if (!res.ok) {
+        console.error('Transporter sign API error:', data);
         toast.error(`Failed to sign pickup: ${data.error || 'Unknown error'}`);
         return;
       }
       
+      console.log('Transporter sign API success:', data);
       toast.success('Pickup signed successfully!');
       
       // Refresh deliveries
