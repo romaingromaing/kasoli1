@@ -166,6 +166,7 @@ export default function TransporterDashboard() {
         body: JSON.stringify({
           transporterAddress: address,
           txHash: txHash,
+          
         }),
       });
       

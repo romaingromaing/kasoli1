@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const transporterAddr = searchParams.get('transporter');
     const buyerAddr = searchParams.get('buyer');
+    const farmerAddr = searchParams.get('farmer');
     const pending = searchParams.get('pending'); // New parameter for pending driver deals
 
     if (transporterAddr) {
@@ -50,6 +51,42 @@ export async function GET(req: NextRequest) {
         // Add any other fields needed by the frontend here
       }));
       return NextResponse.json(deliveries);
+    }
+
+    if (farmerAddr) {
+      const farmer = await prisma.farmer.findUnique({
+        where: { walletAddress: farmerAddr.toLowerCase() },
+      });
+      if (!farmer) {
+        return NextResponse.json({ error: 'Farmer not found' }, { status: 400 });
+      }
+      const deals = await prisma.deal.findMany({
+        where: { farmerId: farmer.id },
+        include: {
+          batch: {
+            include: {
+              farmer: true,
+            },
+          },
+          buyer: true,
+          transporter: true,
+          platform: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      // Ensure all necessary fields are included
+      const farmerDeals = deals.map((deal: any) => ({
+        ...deal,
+        escrowTxHash: deal.escrowTxHash,
+        sigMask: deal.sigMask,
+        farmerAmount: deal.farmerAmount,
+        platformFee: deal.platformFee,
+        freightAmount: deal.freightAmount,
+        totalLocked: deal.totalLocked,
+      }));
+      
+      return NextResponse.json(farmerDeals);
     }
 
     // Get pending driver deals (no transporter assigned yet)
@@ -95,7 +132,19 @@ export async function GET(req: NextRequest) {
         },
         orderBy: { createdAt: 'desc' },
       });
-      return NextResponse.json(deals);
+      
+      // Ensure all necessary fields are included
+      const buyerDeals = deals.map((deal: any) => ({
+        ...deal,
+        escrowTxHash: deal.escrowTxHash,
+        sigMask: deal.sigMask,
+        farmerAmount: deal.farmerAmount,
+        platformFee: deal.platformFee,
+        freightAmount: deal.freightAmount,
+        totalLocked: deal.totalLocked,
+      }));
+      
+      return NextResponse.json(buyerDeals);
     }
 
     return NextResponse.json([]);

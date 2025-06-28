@@ -222,12 +222,14 @@ export default function BuyerOrdersPage() {
               <div className="text-sm text-dusk-gray">Active</div>
             </Card>
             <Card className="text-center">
-              <div className="text-2xl font-bold text-ocean-navy">{historyDeals.filter(d => d.status === 'PAID_OUT').length}</div>
-              <div className="text-sm text-dusk-gray">Completed</div>
+              <div className="text-2xl font-bold text-ocean-navy">
+                {pendingDeals.filter(d => d.status === 'READY_TO_FINAL' || (d.sigMask === 6 && d.escrowTxHash)).length}
+              </div>
+              <div className="text-sm text-dusk-gray">Ready to Final</div>
             </Card>
             <Card className="text-center">
-              <div className="text-2xl font-bold text-ocean-navy">{historyDeals.filter(d => d.status === 'DISPUTED').length}</div>
-              <div className="text-sm text-dusk-gray">Disputed</div>
+              <div className="text-2xl font-bold text-ocean-navy">{historyDeals.filter(d => d.status === 'PAID_OUT').length}</div>
+              <div className="text-sm text-dusk-gray">Completed</div>
             </Card>
             <Card className="text-center">
               <div className="text-2xl font-bold text-ocean-navy">

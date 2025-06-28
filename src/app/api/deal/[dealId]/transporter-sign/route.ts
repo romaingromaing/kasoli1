@@ -45,12 +45,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dea
     }
 
     // Update the deal to include the transporter and update signature mask
+    const newSigMask = deal.sigMask | TRANSPORTER_BIT;
+    let newStatus = deal.status;
+    
+    // If both farmer and transporter have signed (sigMask = 6), set status to READY_TO_FINAL
+    if ((newSigMask & FARMER_BIT) && (newSigMask & TRANSPORTER_BIT)) {
+      newStatus = 'READY_TO_FINAL';
+    }
+    
     const updatedDeal = await prisma.deal.update({
       where: { id: dealId },
       data: {
         transporterId: transporter.id,
-        status: 'AWAITING_ESCROW', // Update status when transporter accepts
-        sigMask: deal.sigMask | TRANSPORTER_BIT, // Add transporter signature bit
+        status: newStatus,
+        sigMask: newSigMask, // Add transporter signature bit
       },
       include: {
         batch: true,

@@ -58,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dea
     let newStatus = deal.status;
     let batchStatus = deal.batch.status;
 
-    // If both farmer and transporter have signed, update status and batch
+    // If both farmer and transporter have signed (sigMask = 6), update status to READY_TO_FINAL
     if ((newSigMask & FARMER_BIT) && (newSigMask & 0x4)) {
       newStatus = 'READY_TO_FINAL';
       batchStatus = 'DELIVERED';
