@@ -235,7 +235,7 @@ export function CreateBatchModal({ isOpen, onClose }: CreateBatchModalProps) {
 
       try {
         const log = receipt.logs.find(
-          (l) => l.address.toLowerCase() === CONTRACTS.RECEIPT.toLowerCase()
+          (l) => l.address.toLowerCase() === (CONTRACTS.RECEIPT as string).toLowerCase()
         );
         let id = '0';
         if (log) {
