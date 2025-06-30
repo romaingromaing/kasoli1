@@ -10,7 +10,7 @@ export const RECEIPT_ABI = [
   {
     "inputs": [],
     "stateMutability": "nonpayable",
-    "type": "constructor"
+    "type": "constructor" 
   },
   {
     "inputs": [
