@@ -8,7 +8,7 @@ async function main() {
     where: { id: 1 },
     update: {},
     create: {
-      walletAddress: '0x383d00b8E88c89612FeCFCE522d6022460B5e7A6',
+      walletAddress: '0xB16446ACdC14e653311BBf2924ee354E6de6fe68',
       name: 'Kasoli Platform',
       url: 'https://kasoli.com',
       email: 'platform@kasoli.com',
@@ -17,10 +17,10 @@ async function main() {
 
   // Create User record for platform
   const platformUser = await prisma.user.upsert({
-    where: { walletAddress: '0x383d00b8E88c89612FeCFCE522d6022460B5e7A6' },
+    where: { walletAddress: '0xB16446ACdC14e653311BBf2924ee354E6de6fe68' },
     update: {},
     create: {
-      walletAddress: '0x383d00b8E88c89612FeCFCE522d6022460B5e7A6',
+      walletAddress: '0xB16446ACdC14e653311BBf2924ee354E6de6fe68',
       currentRole: 'PLATFORM',
       email: 'platform@kasoli.com',
     },
