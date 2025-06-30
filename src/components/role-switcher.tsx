@@ -15,15 +15,24 @@ export function RoleSwitcher() {
   const { role, refetch } = useRole();
   const router = useRouter();
 
+  // Check if current user is platform account
+  const platformAddress = process.env.NEXT_PUBLIC_PLATFORM_ADDRESS || '';
+  const isPlatformAccount = address && platformAddress && address.toLowerCase() === platformAddress.toLowerCase();
+
   const switchRole = async (r: Role) => {
     if (!address || !r || switching) return;
     
     setSwitching(true);
     try {
+      // For platform accounts, we don't need to send profile data
+      const requestBody = isPlatformAccount 
+        ? { address, role: r }
+        : { address, role: r };
+
       const response = await fetch('/api/user/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, role: r }),
+        body: JSON.stringify(requestBody),
       });
       
       if (response.ok) {
@@ -82,7 +91,10 @@ export function RoleSwitcher() {
       <Modal isOpen={open} onClose={() => setOpen(false)} title="Switch Role">
         <div className="space-y-3">
           <p className="text-sm text-dusk-gray mb-4">
-            Choose the role you want to act as. You can switch between roles anytime.
+            {isPlatformAccount 
+              ? "Choose the role you want to act as. As a platform administrator, you can switch between all roles freely."
+              : "Choose the role you want to act as. You can switch between roles anytime."
+            }
           </p>
           {(['FARMER', 'BUYER', 'TRANSPORTER', 'PLATFORM'] as Role[]).map((r) => (
             <Button

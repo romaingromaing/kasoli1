@@ -10,6 +10,42 @@ This document chronicles the deployment journey of the Kasoli-ku-Mukutu grain tr
 - **Deployment**: Vercel
 - **Authentication**: Web3 wallet-based authentication
 
+## Platform Dashboard Access Logic
+
+### Platform Account Privileges
+The platform account (configured via `NEXT_PUBLIC_PLATFORM_ADDRESS`) has special privileges:
+
+1. **Role Switching**: Platform accounts can switch between all available roles (FARMER, BUYER, TRANSPORTER, PLATFORM) without restrictions
+2. **Profile Management**: Platform accounts automatically get profiles created for all roles with default values
+3. **No Email Validation**: Platform accounts can switch roles without providing email/profile information
+4. **Enhanced Dashboard**: Access to comprehensive platform management features
+
+### Access Control Implementation
+- **Location**: `src/components/ui/platform-dashboard-link.tsx`
+- **Role Verification**: `src/lib/hooks/useRequireRole.ts`
+- **API Logic**: `src/app/api/user/connect/route.ts`
+- **Role Switching**: `src/components/role-switcher.tsx`
+
+### Platform Dashboard Features
+- **User Management**: Monitor and manage all platform users
+- **Deal Oversight**: Track all active deals and transactions  
+- **Analytics**: Platform performance and metrics
+- **Settings**: Configure platform parameters
+- **Role Access**: Quick switching between all user roles for testing
+
+### Role Switching Logic
+```typescript
+// Platform accounts can switch roles freely
+if (existing.currentRole !== role && isPlatformAccount) {
+  await prisma.user.update({
+    where: { walletAddress: wallet },
+    data: { currentRole: role as any },
+  });
+} else if (existing.currentRole !== role && !isPlatformAccount) {
+  return NextResponse.json({ error: 'Role already assigned' }, { status: 400 });
+}
+```
+
 ## Pre-Deployment Setup
 
 ### 1. Database Configuration
