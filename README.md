@@ -51,7 +51,7 @@ cp .env.example .env.local
 DATABASE_URL="postgresql://..."
 
 # Blockchain
-NEXT_PUBLIC_RPC_URL="https://sepolia.base.org"
+NEXT_PUBLIC_RPC_URL="https://api.avax-test.network/ext/bc/C/rpc"
 NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS="0x..."
 NEXT_PUBLIC_RECEIPT_CONTRACT_ADDRESS="0x..."
 NEXT_PUBLIC_ORACLE_CONTRACT_ADDRESS="0x..."
